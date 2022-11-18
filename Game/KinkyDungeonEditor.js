@@ -529,8 +529,8 @@ let KDTELoadConfirm = false;
 function KDTE_Clear(x, y, force = false) {
 	if (force || !KinkyDungeonMovableTilesSmartEnemy.includes(KinkyDungeonMapGet(x, y))) {
 		KinkyDungeonMapSetForce(x, y, '0');
-		KinkyDungeonTiles.delete(x + "," + y);
-		KinkyDungeonTilesSkin.delete(x + "," + y);
+		KinkyDungeonTilesDelete(x + "," + y);
+		delete KinkyDungeonTilesSkin[x + "," + y];
 		for (let jail of KDGameData.JailPoints) {
 			if (jail.x == x && jail.y == y)
 				KDGameData.JailPoints.splice(KDGameData.JailPoints.indexOf(jail), 1);
@@ -548,16 +548,16 @@ let KDTE_Brush = {
 				break;
 			}
 		}
-		KinkyDungeonEffectTiles.delete(KinkyDungeonTargetX + "," + KinkyDungeonTargetY);
+		delete KinkyDungeonEffectTiles[KinkyDungeonTargetX + "," + KinkyDungeonTargetY];
 	},
 	"tile": (brush, curr, noSwap) => {
-		let OL = KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY) ? KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits : undefined;
+		let OL = KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY) ? KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits : undefined;
 		let tile = (curr == brush.tile && !noSwap) ? '0' : brush.tile;
 		if (tile == '0') {
 			if (!noSwap) {
 				KDTE_Clear(KinkyDungeonTargetX, KinkyDungeonTargetY, true);
 				if (OL)
-					KinkyDungeonTiles.set(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
+					KinkyDungeonTilesSet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
 			}
 		} else if (curr != tile) {
 			KinkyDungeonMapSetForce(KinkyDungeonTargetX, KinkyDungeonTargetY, tile);
@@ -566,26 +566,26 @@ let KDTE_Brush = {
 				KDGameData.JailPoints.push({x: KinkyDungeonTargetX, y: KinkyDungeonTargetY, type: brush.jail.type, radius: brush.jail.radius});
 			}
 			if (brush.special) {
-				KinkyDungeonTiles.set(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, brush.special);
+				KinkyDungeonTilesSet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, brush.special);
 				if (OL)
-					KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = true;
+					KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = true;
 			} else {
 				if (OL)
-					KinkyDungeonTiles.set(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
+					KinkyDungeonTilesSet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
 				else
-					KinkyDungeonTiles.delete(KinkyDungeonTargetX + "," + KinkyDungeonTargetY);
+					KinkyDungeonTilesDelete(KinkyDungeonTargetX + "," + KinkyDungeonTargetY);
 			}
 		}
 	},
 	'offlimits': (brush, curr, noSwap) => {
-		if (KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY)) {
-			if (KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits) {
+		if (KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY)) {
+			if (KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits) {
 				if (!noSwap)
-					KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = false;
+					KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = false;
 			} else
-				KinkyDungeonTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = true;
+				KinkyDungeonTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY).OffLimits = true;
 		} else {
-			KinkyDungeonTiles.set(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
+			KinkyDungeonTilesSet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY, {OffLimits: true});
 		}
 	},
 	'Keyring': (brush, curr, noSwap) => {
@@ -602,9 +602,9 @@ let KDTE_Brush = {
 		if ((brush.wall && KinkyDungeonWallTiles.includes(curr))
 			|| (brush.floor && KinkyDungeonGroundTiles.includes(curr))
 			|| (!brush.floor && !brush.wall)) {
-			if (KinkyDungeonEffectTiles.get(KinkyDungeonTargetX + "," + KinkyDungeonTargetY)) {
+			if (KinkyDungeonEffectTilesGet(KinkyDungeonTargetX + "," + KinkyDungeonTargetY)) {
 				if (!noSwap)
-					KinkyDungeonEffectTiles.delete(KinkyDungeonTargetX + "," + KinkyDungeonTargetY);
+					delete KinkyDungeonEffectTiles[KinkyDungeonTargetX + "," + KinkyDungeonTargetY];
 			} else {
 				KDCreateEffectTile(KinkyDungeonTargetX, KinkyDungeonTargetY, {name: brush.effectTile}, 0);
 			}
@@ -823,6 +823,7 @@ function KDTE_CloseUI() {
 	ElementRemove("MapTileY");
 }
 
+
 /**
  *
  * @param {number} w
@@ -848,11 +849,11 @@ function KDTE_Create(w, h, chkpoint = 'grv') {
 		}
 		KinkyDungeonGrid = KinkyDungeonGrid + "\n";
 	}
-	KinkyDungeonTiles = new Map();
-	KinkyDungeonTilesSkin = new Map();
-	KinkyDungeonEffectTiles = new Map();
+	KinkyDungeonTiles = {};
+	KinkyDungeonEffectTiles = {};
+	KinkyDungeonTilesSkin = {};
 	KinkyDungeonEntities = [];
-	KinkyDungeonTilesMemory = new Map();
+	KinkyDungeonTilesMemory = {};
 
 	KinkyDungeonPOI = [];
 	KDGameData.KeyringLocations = [];
@@ -901,15 +902,15 @@ function KDTE_LoadTile(name) {
 		}
 	}
 
-	KinkyDungeonTiles = new Map(nt.Tiles);
-	KinkyDungeonTilesSkin = new Map(nt.Skin);
+	KinkyDungeonTiles = KDObjFromMapArray(nt.Tiles);
+	KinkyDungeonTilesSkin = KDObjFromMapArray(nt.Skin);
 	KDGameData.JailPoints = [];
 	for (let j of nt.Jail) {
 		KDGameData.JailPoints.push(Object.assign({}, j));
 	}
-	let array = new Map(nt.effectTiles);
-	for (let tile of array.entries()) {
-		KinkyDungeonEffectTiles.set(tile[0], new Map(tile[1]));
+	let array = KDObjFromMapArray(nt.effectTiles);
+	for (let tile of Object.entries(array)) {
+		KinkyDungeonEffectTilesSet(tile[0], KDObjFromMapArray(tile[1]));
 	}
 
 	KDVisionUpdate = 1;
@@ -941,13 +942,6 @@ function KDTE_LoadTile(name) {
 
 function KDTE_SaveTile(tile) {
 	/**
-	 * @type {[string, [string, effectTile][]][]}
-	 */
-	let array = [];
-	for (let et of KinkyDungeonEffectTiles.entries()) {
-		array.push([et[0], Array.from(et[1])]);
-	}
-	/**
 	 * @type {KDMapTile}
 	 */
 	let saveTile = {
@@ -963,9 +957,9 @@ function KDTE_SaveTile(tile) {
 		POI: KinkyDungeonPOI,
 		Keyring: KDGameData.KeyringLocations,
 		Jail: KDGameData.JailPoints,
-		Tiles: Array.from(KinkyDungeonTiles),
-		effectTiles: array,
-		Skin: Array.from(KinkyDungeonTilesSkin),
+		Tiles: KinkyDungeonTiles,
+		effectTiles: KinkyDungeonEffectTiles,
+		Skin: KinkyDungeonTilesSkin,
 		inaccessible: KDTEGetInaccessible(),
 		tags: ElementValue("MapTags") ? ElementValue("MapTags").split(',') : [ElementValue("MapTileCategory")],
 		forbidTags: ElementValue("MapForbidTags") ? ElementValue("MapForbidTags").split(',') : [],
@@ -1073,4 +1067,24 @@ function KDTEGetInaccessible() {
 	}
 
 	return list;
+}
+
+function KDObjFromMapArray(array) {
+	if (array.length) {
+		let map = {};
+		for (let entry of array) {
+			map[entry[0]] = entry[1];
+		}
+		return map;
+	} else {
+		return array;
+	}
+}
+
+function KDReloadAllEditorTiles() {
+	for (let tile of Object.entries(KDMapTilesList)) {
+		KDEditorCurrentMapTileName = tile[0];
+		KDTE_LoadTile(tile[0]);
+		KDTE_SaveTile();
+	}
 }

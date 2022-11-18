@@ -164,7 +164,7 @@ let KinkyDungeonStatsPresets = {
 	"Locksmith": {category: "Restraints", id: 4, cost: 2, block: ["Clueless"]},
 	"Clueless": {category: "Restraints", id: 5, cost: -1, block: ["Locksmith"]},
 	"HighSecurity": {category: "Restraints", id: 48, cost: -1},
-	"SearchParty": {category: "Enemies", id: 51, cost: -1},
+	//"SearchParty": {category: "Enemies", id: 51, cost: -1},
 	"NoWayOut": {category: "Restraints", id: 52, cost: -1},
 	"TightRestraints": {category: "Restraints", id: 54, cost: -1},
 	"MagicHands": {category: "Restraints", id: "MagicHands", cost: -1},
@@ -215,14 +215,16 @@ let KinkyDungeonStatsPresets = {
 	"Vengeance": {category: "Enemies", id: "Vengeance", cost: -1},
 	"AbsoluteFocus": {category: "Magic", id: "AbsoluteFocus", cost: -1},
 
-	"Hogtied": {startPriority: 15, category: "Start", id: "Hogtied", cost: -1, tags: ["start"]},
+	"Hogtied": {startPriority: 50, category: "Start", id: "Hogtied", cost: -1, tags: ["start"]},
 	"StartObsidian": {startPriority: 5, category: "Start", id: "StartObsidian", cost: -2, outfit: "Obsidian", tags: ["start"]},
 	"StartWolfgirl": {startPriority: 10, category: "Start", id: "StartWolfgirl", cost: -3, outfit: "Wolfgirl", tags: ["start"]},
 	"StartMaid": {startPriority: 20, category: "Start", id: "StartMaid", cost: -2, outfit: "Maid", tags: ["start"]},
-	"StartLatex": {startPriority: 30, category: "Start", id: "StartLatex", cost: -2, tags: ["start"]},
+	"StartLatex": {startPriority: 15, category: "Start", id: "StartLatex", cost: -2, tags: ["start"]},
+
+	"FuukaCollar": {startPriority: 40, category: "Boss", id: "FuukaCollar", cost: -3, locked: true, tags: ["start"]},
+
 
 	"CommonFuuka": {category: "Boss", id: "CommonFuuka", cost: -1, locked: true},
-	"FuukaCollar": {startPriority: 40, category: "Boss", id: "FuukaCollar", cost: -3, locked: true, tags: ["start"]},
 
 	"Nowhere": {category: "Enemies", id: "Nowhere", cost: -1},
 	"Prisoner": {category: "Start", id: "Prisoner", cost: 0},
@@ -232,6 +234,8 @@ let KinkyDungeonStatsPresets = {
 	"Rusted": {category: "Map", id: "Rusted", cost: 1},
 	"Unmasked": {category: "Toggles", id: "Unmasked", cost: 0},
 	"NoNurse": {category: "Toggles", id: "NoNurse", cost: 0},
+	"NoBrats": {category: "Toggles", id: "NoBrats", cost: 0, debuff: true, block: ["OnlyBrats"]},
+	"OnlyBrats": {category: "Toggles", id: "OnlyBrats", cost: 0, debuff: true, block: ["NoBrats"]},
 
 	"Quickness": {category: "Combat", id: "Quickness", cost: 2},
 
@@ -405,7 +409,7 @@ let KDPerkStart = {
 		KinkyDungeonChangeRep("Latex", 10);
 		KinkyDungeonAddRestraintIfWeaker("LatexCatsuit", 5, true, "Red", false, undefined, undefined, "Jail", true);
 		for (let i = 0; i < 30; i++) {
-			let r = KinkyDungeonGetRestraint({tags: ["latexRestraints", "latexRestraintsHeavy", "latexCollar"]}, 12, "grv", true, "Red");
+			let r = KinkyDungeonGetRestraint({tags: ["latexRestraints", "latexStart", "latexCollar"]}, 12, "grv", true, "Red");
 			if (r)
 				KinkyDungeonAddRestraintIfWeaker(r, 0, true, r.Group == "ItemNeck" ? "Blue" : "Purple", undefined, undefined, undefined, "Jail", true);
 		}
@@ -414,7 +418,7 @@ let KDPerkStart = {
 	StartMaid: () =>{
 		KDChangeFactionRelation("Player", "Maidforce", 0.2 - KDFactionRelation("Player", "Maidforce"), true);
 		for (let i = 0; i < 30; i++) {
-			let r = KinkyDungeonGetRestraint({tags: ["maidRestraints", "maidVibeRestraints"]}, 12, "grv", true, "Purple");
+			let r = KinkyDungeonGetRestraint({tags: ["maidRestraints", "maidVibeRestraints", "noMaidJacket"]}, 12, "grv", true, "Purple");
 			if (r)
 				KinkyDungeonAddRestraintIfWeaker(r, 0, true, r.Group == "ItemNeck" ? "Blue" : "Purple", undefined, undefined, undefined, undefined, true);
 		}
@@ -577,8 +581,8 @@ function KinkyDungeonDrawPerks(NonSelectable) {
 		}
 		for (let stat of c.buffs.concat(c.debuffs)) {
 			if (!stat[1].locked || KDUnlockedPerks.includes(stat[0])) {
-				let YY = stat[1].cost < 0 ? Y_alt : Y;
-				let XX = stat[1].cost < 0 ? X + KDPerksButtonWidth + KDPerksButtonWidthPad : X;
+				let YY = (stat[1].cost < 0 || stat[1].debuff) ? Y_alt : Y;
+				let XX = (stat[1].cost < 0 || stat[1].debuff) ? X + KDPerksButtonWidth + KDPerksButtonWidthPad : X;
 
 				if (inView()) {
 					let colorAvailable = NonSelectable ?
@@ -625,7 +629,7 @@ function KinkyDungeonDrawPerks(NonSelectable) {
 					});
 					filled_x[X] = X;
 				}
-				if (stat[1].cost < 0) Y_alt += KDPerksButtonHeight + KDPerksButtonHeightPad;
+				if (stat[1].cost < 0 || stat[1].debuff) Y_alt += KDPerksButtonHeight + KDPerksButtonHeightPad;
 				else Y += KDPerksButtonHeight + KDPerksButtonHeightPad;
 			}
 		}

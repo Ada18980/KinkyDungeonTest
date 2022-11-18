@@ -487,7 +487,7 @@ function KinkyDungeonLoad() {
 	for (let stat of Object.entries(KinkyDungeonStatsPresets)) {
 		for (let c of KDCategories) {
 			if (stat[1].category == c.name) {
-				if (KDGetPerkCost(stat[1]) < 0)
+				if (stat[1].debuff || KDGetPerkCost(stat[1]) < 0)
 					c.debuffs.push(stat);
 				else
 					c.buffs.push(stat);
@@ -1019,6 +1019,13 @@ function KinkyDungeonRun() {
 		KinkyDungeonGameFlag = true;
 		KinkyDungeonDrawGame();
 		if (KinkyDungeonInputQueue.length < 1) {
+			let _CharacterRefresh = CharacterRefresh;
+			let _CharacterAppearanceBuildCanvas = CharacterAppearanceBuildCanvas;
+			// @ts-ignore
+			CharacterRefresh = () => {KDRefresh = true;};
+			// @ts-ignore
+			CharacterAppearanceBuildCanvas = () => {};
+
 			if (KDGameData.SleepTurns > 0) {
 				if (CommonTime() > KinkyDungeonSleepTime) {
 					KDGameData.SleepTurns -= 1;
@@ -1091,7 +1098,12 @@ function KinkyDungeonRun() {
 					KinkyDungeonSleepTime = CommonTime() + (KinkyDungeonFastWait ? 100 : 300);
 				}
 			} else KinkyDungeonSleepTime = CommonTime() + 100;
+			// @ts-ignore
+			CharacterRefresh = _CharacterRefresh;
+			// @ts-ignore
+			CharacterAppearanceBuildCanvas = _CharacterAppearanceBuildCanvas;
 		} else KinkyDungeonSleepTime = CommonTime() + 100;
+
 	} else if (KinkyDungeonState == "End") {
 		KinkyDungeonGameRunning = false;
 		// Draw temp start screen
@@ -1606,6 +1618,7 @@ function KinkyDungeonStartNewGame(Load) {
 	KinkyDungeonNewGame = 0;
 	KinkyDungeonInitialize(1, Load);
 	MiniGameKinkyDungeonCheckpoint = "grv";
+	KinkyDungeonGrid = "";
 	if (Load) {
 		KinkyDungeonLoadGame();
 		KDSendEvent('loadGame');
@@ -1615,7 +1628,8 @@ function KinkyDungeonStartNewGame(Load) {
 		MiniGameKinkyDungeonLevel = 0;
 		KDInitializeJourney("");
 	}
-	KinkyDungeonCreateMap(KinkyDungeonMapParams[KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint]], MiniGameKinkyDungeonLevel, false, Load);
+	if (!KinkyDungeonGrid)
+		KinkyDungeonCreateMap(KinkyDungeonMapParams[KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint]], MiniGameKinkyDungeonLevel, false, Load);
 	KinkyDungeonState = "Game";
 
 	if (KinkyDungeonKeybindings) {
@@ -1763,12 +1777,13 @@ function KinkyDungeonHandleClick() {
 	}  else if (KinkyDungeonState == "Load"){
 		if (MouseIn(875, 750, 350, 64)) {
 			KinkyDungeonNewGame = 0;
+			KinkyDungeonGrid = "";
 			KinkyDungeonInitialize(1, true);
 			MiniGameKinkyDungeonCheckpoint = "grv";
 			if (KinkyDungeonLoadGame(ElementValue("saveInputField"))) {
 				KDSendEvent('loadGame');
 				//KDInitializeJourney(KDJourney);
-				KinkyDungeonCreateMap(KinkyDungeonMapParams[KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint]], MiniGameKinkyDungeonLevel, false, true);
+				if (KinkyDungeonGrid == "") KinkyDungeonCreateMap(KinkyDungeonMapParams[KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint]], MiniGameKinkyDungeonLevel, false, true);
 				ElementRemove("saveInputField");
 				KinkyDungeonState = "Game";
 
@@ -1802,6 +1817,7 @@ function KinkyDungeonHandleClick() {
 			}
 			// Return to menu
 			KinkyDungeonState = "Menu";
+			KinkyDungeonNewDress = true;
 			ElementRemove("saveInputField");
 			return true;
 		} else if (MouseIn(1275, 750, 350, 64)) {
@@ -2219,6 +2235,19 @@ function KinkyDungeonGenerateSaveData() {
 	save.spells = spells;
 	save.inventory = newInv;
 	save.KDGameData = KDGameData;
+	save.KDEventData = KDEventData;
+
+	save.KinkyDungeonEffectTiles = KinkyDungeonEffectTiles;
+	save.KinkyDungeonTiles = KinkyDungeonTiles;
+	save.KinkyDungeonTilesSkin = KinkyDungeonTilesSkin;
+	save.KinkyDungeonTilesMemory = KinkyDungeonTilesMemory;
+	save.KinkyDungeonPlayerEntity = KinkyDungeonPlayerEntity;
+	save.KinkyDungeonEntities = KinkyDungeonEntities;
+	save.KinkyDungeonBullets = KinkyDungeonBullets;
+	save.KinkyDungeonGrid = KinkyDungeonGrid;
+	save.KinkyDungeonGridWidth = KinkyDungeonGridWidth;
+	save.KinkyDungeonGridHeight = KinkyDungeonGridHeight;
+	save.KinkyDungeonFogGrid = KinkyDungeonFogGrid;
 
 	save.stats = {
 		picks: KinkyDungeonLockpicks,
@@ -2303,8 +2332,10 @@ function KinkyDungeonLoadGame(String) {
 				KDOrigMana = KinkyDungeonStatMana*10;
 				KDOrigDistraction = KinkyDungeonStatDistraction*10;
 			}
-			KDGameData = Object.assign({}, KDGameDataBase);
+			KDGameData = JSON.parse(JSON.stringify(KDGameDataBase));
 			if (saveData.KDGameData != undefined) KDGameData = Object.assign({}, saveData.KDGameData);
+			KDEventData = JSON.parse(JSON.stringify(KDEventDataBase));
+			if (saveData.KDEventData != undefined) KDEventData = Object.assign({}, saveData.KDEventData);
 
 			if (saveData.statchoice != undefined) KinkyDungeonStatsChoice = new Map(saveData.statchoice);
 			if (saveData.faction != undefined) KinkyDungeonFactionRelations = saveData.faction;
@@ -2342,6 +2373,23 @@ function KinkyDungeonLoadGame(String) {
 				if (sp) KinkyDungeonSpells.push(sp);
 			}
 
+
+			if (saveData.KinkyDungeonEffectTiles) KinkyDungeonEffectTiles = saveData.KinkyDungeonEffectTiles;
+			if (saveData.KinkyDungeonTiles) KinkyDungeonTiles = saveData.KinkyDungeonTiles;
+			if (saveData.KinkyDungeonTilesSkin) KinkyDungeonTilesSkin = saveData.KinkyDungeonTilesSkin;
+			if (saveData.KinkyDungeonTilesMemory) KinkyDungeonTilesMemory = saveData.KinkyDungeonTilesMemory;
+			if (saveData.KinkyDungeonPlayerEntity) KinkyDungeonPlayerEntity = saveData.KinkyDungeonPlayerEntity;
+			if (saveData.KinkyDungeonEntities) KinkyDungeonEntities = saveData.KinkyDungeonEntities;
+			if (saveData.KinkyDungeonBullets) KinkyDungeonBullets = saveData.KinkyDungeonBullets;
+			if (saveData.KinkyDungeonGrid) {
+				KinkyDungeonGrid = saveData.KinkyDungeonGrid;
+				KinkyDungeonGridWidth = saveData.KinkyDungeonGridWidth;
+				KinkyDungeonGridHeight = saveData.KinkyDungeonGridHeight;
+			}
+			KinkyDungeonResetFog();
+
+			if (saveData.KinkyDungeonFogGrid) KinkyDungeonFogGrid = saveData.KinkyDungeonFogGrid;
+
 			KinkyDungeonSetMaxStats();
 			KinkyDungeonCheckClothesLoss = true;
 			KDNaked = false;
@@ -2355,6 +2403,8 @@ function KinkyDungeonLoadGame(String) {
 				localStorage.setItem('KinkyDungeonSave', String);
 
 			if (saveData.KDGameData && saveData.KDGameData.LastMapSeed) KDsetSeed(saveData.KDGameData.LastMapSeed);
+
+			KDUpdateVision();
 			return true;
 		}
 	}

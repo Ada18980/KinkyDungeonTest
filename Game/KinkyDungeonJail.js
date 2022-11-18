@@ -258,9 +258,10 @@ let KDLocalChaseTypes = ["Refusal", "Attack", "Spell", "SpellItem", "Shrine", "O
  * @param {entity} enemy
  * @param {string} Type
  * @param {string} [faction]
+ * @param {boolean} [force]
  */
-function KinkyDungeonStartChase(enemy, Type, faction) {
-	if (enemy && (!enemy.aware && !(enemy.vp > 0.5))) return;
+function KinkyDungeonStartChase(enemy, Type, faction, force) {
+	if (!force && enemy && (!enemy.aware && !(enemy.vp > 0.5))) return;
 	if ((!enemy && !KDLocalChaseTypes.includes(Type))) {
 		if (KDGameData.PrisonerState == 'jail' || KDGameData.PrisonerState == 'parole') {
 			KinkyDungeonChangeRep("Ghost", -10);
@@ -367,7 +368,7 @@ function KinkyDungeonPlaceJailKeys() {
 				&& KDistChebyshev(X - KinkyDungeonPlayerEntity.x, Y - KinkyDungeonPlayerEntity.y) > 15
 				&& KDistChebyshev(X - KinkyDungeonEndPosition.x, Y - KinkyDungeonEndPosition.y) > 15
 				&& (!KinkyDungeonShortcutPosition || KDistChebyshev(X - KinkyDungeonShortcutPosition.x, Y - KinkyDungeonShortcutPosition.y) > 15)
-				&& (!KinkyDungeonTiles.get(X + "," + Y) || !KinkyDungeonTiles.get(X + "," + Y).OffLimits))
+				&& (!KinkyDungeonTilesGet(X + "," + Y) || !KinkyDungeonTilesGet(X + "," + Y).OffLimits))
 				jailKeyList.push({x:X, y:Y});
 
 	let i = 0;
@@ -447,10 +448,10 @@ function KinkyDungeonHandleJailSpawns(delta) {
 				let g = KinkyDungeonJailGuard();
 				KDClearItems(g);
 				KDSpliceIndex(KinkyDungeonEntities.indexOf(KinkyDungeonJailGuard()), 1);
-				if (KinkyDungeonTiles.get((xx-1) + "," + yy) && KinkyDungeonTiles.get((xx-1) + "," + yy).Type == "Door") {
+				if (KinkyDungeonTilesGet((xx-1) + "," + yy) && KinkyDungeonTilesGet((xx-1) + "," + yy).Type == "Door") {
 					KinkyDungeonMapSet(xx-1, yy, 'D');
 					if (KDGameData.PrisonerState == 'jail')
-						KinkyDungeonTiles.get((xx-1) + "," + yy).Lock = KinkyDungeonGenerateLock(true, MiniGameKinkyDungeonLevel);
+						KinkyDungeonTilesGet((xx-1) + "," + yy).Lock = KinkyDungeonGenerateLock(true, MiniGameKinkyDungeonLevel);
 					if (KDGameData.PrisonerState == 'jail' && KinkyDungeonVisionGet(g.x, g.y))
 						KinkyDungeonSendTextMessage(10, TextGet("KinkyDungeonGuardDisappear").replace("EnemyName", TextGet("Name" + g.Enemy.name)), "#ff0000", 6);
 					if (KinkyDungeonPlayerInCell(true))
@@ -466,7 +467,7 @@ function KinkyDungeonHandleJailSpawns(delta) {
 
 	// Unlock all jail doors when chasing
 	if (!KDGameData.PrisonerState || KDGameData.PrisonerState == 'chase') {
-		for (let T of KinkyDungeonTiles.values()) {
+		for (let T of Object.values(KinkyDungeonTiles)) {
 			if (T.Lock && T.Type == "Door" && T.Jail) T.Lock = undefined;
 		}
 	}
@@ -810,6 +811,7 @@ function KinkyDungeonPassOut() {
 		if (e.hostile < 9000) e.hostile = 0;
 		if (e.vp > 0) e.vp = 0;
 		if (e.aware) e.aware = false;
+		if (e.maxlifetime && e.maxlifetime < 9000) e.lifetime = 0;
 		KDExpireFlags(e);
 	}
 
@@ -824,7 +826,7 @@ function KDGetJailDoor(x, y) {
 		y = point.y;
 	}
 	x += KinkyDungeonJailLeashX - 1;
-	return {tile: KinkyDungeonTiles.get((x) + "," + y), x: x, y: y};
+	return {tile: KinkyDungeonTilesGet((x) + "," + y), x: x, y: y};
 }
 
 function KinkyDungeonDefeat(PutInJail) {
@@ -933,7 +935,7 @@ function KinkyDungeonDefeat(PutInJail) {
 	// Lock all jail doors
 	for (let X = 1; X < KinkyDungeonGridWidth - 1; X++)
 		for (let Y = 1; Y < KinkyDungeonGridHeight - 1; Y++) {
-			let tile = KinkyDungeonTiles.get(X + "," + Y);
+			let tile = KinkyDungeonTilesGet(X + "," + Y);
 			if (tile && tile.Jail && tile.ReLock && (KinkyDungeonMapGet(X, Y) == 'd' || KinkyDungeonMapGet(X, Y) == 'D')) {
 				KinkyDungeonMapSet(X, Y, 'D');
 				if (tile && !tile.Lock) {

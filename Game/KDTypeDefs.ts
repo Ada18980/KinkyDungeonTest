@@ -1,5 +1,6 @@
 /** Kinky Dungeon Typedefs*/
 type item = {
+	linkCache?: string[],
 	/** If the item has a different curse from the base curse */
 	curse?: string,
 	/** Name of the item*/
@@ -115,6 +116,7 @@ interface KDRestraintProps {
 	enemyTags?: Record<string, number>,
 	playerTags?: Record<string, number>,
 	shrine?: string[],
+
 
 	/** Affinity type: Hook, Edge, or Sharp, Sticky, defaults are Hook (struggle), Sharp (Cut), Edge (Pick), Sticky (Unlock), and none (Pick)*/
 	affinity?: {
@@ -345,6 +347,8 @@ interface KDRestraintProps {
 	factionColor?: number[][],
 	/** Determines if it gets hidden by the 'Hide Armor' option */
 	armor?: boolean,
+	/** Power to display, not actual power */
+	displayPower?: number,
 };
 
 interface restraint extends KDRestraintProps {
@@ -567,6 +571,16 @@ interface enemy extends KDHasTags {
 	silenceTime?: number,
 	/** List of spells*/
 	spells?: string[],
+	/** This enemy will not miscast spells when distracted*/
+	noMiscast?: boolean,
+	/** Sound effect when miscasting */
+	miscastsfx?: string,
+	/** Message when miscasting */
+	miscastmsg?: string,
+	/** This enemy knows the unlock command up to this level*/
+	unlockCommandLevel?: number,
+	/** This enemy must wait this long between unlock command attempts. Default is 90*/
+	unlockCommandCD?: number,
 	/** */
 	spellCooldownMult?: number,
 	/** */
@@ -749,6 +763,8 @@ interface enemy extends KDHasTags {
 	ignoreflag?: string[],
 	/** flags set when the player is hit but no binding occurs*/
 	failAttackflag?: string[],
+	/** How long to set the flag for */
+	failAttackflagDuration?: number,
 	/** */
 	visionSummoned?: number,
 	/** */
@@ -919,6 +935,10 @@ interface KinkyDungeonEvent {
 }
 
 interface entity {
+	/** Opinion of you. Positive is good. */
+	opinion?: number,
+	/** Determines if an enemy can be dommed or not */
+	domVariance?: number,
 	hideTimer?: boolean,
 	Enemy: enemy,
 	player?: boolean,
@@ -1090,6 +1110,8 @@ interface effectTileRef {
 };
 
 type KDPerk = {
+	/** Determines if this one goes in the debuffs tree */
+	debuff?: boolean,
 	category: string,
 	id: string | number,
 	cost: number,
@@ -1104,6 +1126,12 @@ type KDPerk = {
 }
 
 interface spell {
+	/** Marks the spell as a command word spell to enemies */
+	commandword?: boolean,
+	/** The spell is used to buff allies */
+	buffallies?: boolean,
+	/** caster will also target themselves */
+	selfbuff?: boolean,
 	/** Type of binding applied to the power */
 	bindType?: string,
 	/** Stops the spell from moving more than 1 tile */
@@ -1290,6 +1318,8 @@ interface spell {
 	heal?: boolean;
 	/** Whether AI treats as a buff */
 	buff?: boolean;
+	/** The spell needs this condition for an enemy to cast it*/
+	castCondition?: string;
 	/** Player can only cast spell on a creature or player */
 	mustTarget?: boolean;
 	/** Player cant target player */
@@ -1494,6 +1524,7 @@ interface VibeMod {
 }
 
 interface KinkyDungeonSave {
+	KinkyDungeonPlayerEntity: any;
 	level: number;
 	checkpoint: string;
 	rep: Record<string, number>;
@@ -1525,6 +1556,7 @@ interface KinkyDungeonSave {
 	spells: string[];
 	inventory: item[];
 	KDGameData: KDGameDataBase;
+	KDEventData: Object;
 	flags: [string, number][];
 	stats: {
 		picks: number;
@@ -1541,6 +1573,19 @@ interface KinkyDungeonSave {
 		diff: number;
 	};
 	faction: Record<string, Record<string, number>>;
+
+
+	KinkyDungeonTiles: Record<string, any>;
+	KinkyDungeonTilesSkin: Record<string, any>;
+	KinkyDungeonTilesMemory: Record<string, any>;
+	KinkyDungeonEffectTiles: Record<string, Record<string, effectTile>>;
+	KinkyDungeonRandomPathablePoints: Record<string, {x: number, y: number, tags?:string[]}>;
+	KinkyDungeonEntities: entity[];
+	KinkyDungeonBullets: any[];
+	KinkyDungeonGrid: string;
+	KinkyDungeonGridWidth: number;
+	KinkyDungeonGridHeight: number;
+	KinkyDungeonFogGrid: any[];
 }
 
 
@@ -1663,9 +1708,9 @@ type KDMapTile = {
     POI: any[];
     Keyring?: any[];
 	Jail: any[];
-    Tiles: [string, any][];
-    effectTiles: [string, [string, effectTile][]][];
-    Skin: [string, any][];
+    Tiles: Record<string, any>;
+    effectTiles: Record<string, Record<string, effectTile>>;
+    Skin: Record<string, any>;
 	/** List of inaccessible entrance pairs */
 	inaccessible: {indX1: number, indY1: number, dir1: string, indX2: number, indY2: number, dir2: string}[];
 	/** tags */

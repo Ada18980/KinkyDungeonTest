@@ -13,7 +13,7 @@ let KinkyDungeonSpellSpecials = {
 				KinkyDungeonApplyBuff(en.buffs, {id: "Analyze2", type: "Info", duration: 99999, power: 1.0, player: false, enemies: true, tags: ["info"]},);
 			} else return "Fail";
 		} else {
-			let tile = KinkyDungeonTiles.get(targetX + "," + targetY);
+			let tile = KinkyDungeonTilesGet(targetX + "," + targetY);
 			if (tile) {
 				if (tile.Loot && tile.Roll) {
 					let event = KinkyDungeonLoot(MiniGameKinkyDungeonLevel, KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint], tile.Loot, tile.Roll, tile, true);
@@ -90,20 +90,23 @@ let KinkyDungeonSpellSpecials = {
 					}
 				en.boundLevel = Math.max(0, en.boundLevel);
 				KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell));
+				if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Magic.ogg");
 				return "Cast";
 			}
 			return "Fail";
-		} else if (KinkyDungeonPlayerGetRestraintsWithLocks(["Purple"]).length > 0) {
-			for (let r of KinkyDungeonPlayerGetRestraintsWithLocks(["Purple"], true)) {
+		} else if (KinkyDungeonPlayerGetRestraintsWithLocks(KDMagicLocks).length > 0) {
+			for (let r of KinkyDungeonPlayerGetRestraintsWithLocks(KDMagicLocks, true)) {
 				KinkyDungeonLock(r, "");
 			}
 			KinkyDungeonSendTextMessage(4, TextGet("KinkyDungeonPurpleLockRemove"), "yellow", 2);
 			KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell));
+			if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Magic.ogg");
 			return "Cast";
-		} else if (KinkyDungeonTiles.get(targetX + "," + targetY) && KinkyDungeonTiles.get(targetX + "," + targetY).Type == "Charger" && KinkyDungeonTiles.get(targetX + "," + targetY).NoRemove) {
-			KinkyDungeonTiles.get(targetX + "," + targetY).NoRemove = false;
+		} else if (KinkyDungeonTilesGet(targetX + "," + targetY) && KinkyDungeonTilesGet(targetX + "," + targetY).Type == "Charger" && KinkyDungeonTilesGet(targetX + "," + targetY).NoRemove) {
+			KinkyDungeonTilesGet(targetX + "," + targetY).NoRemove = false;
 			KinkyDungeonSendActionMessage(4, TextGet("KinkyDungeonPurpleLockRemoveCharger"), "yellow", 2);
 			KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell));
+			if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Magic.ogg");
 			return "Cast";
 		}
 		return "Fail";
@@ -112,11 +115,29 @@ let KinkyDungeonSpellSpecials = {
 		let en = KinkyDungeonEnemyAt(targetX, targetY);
 		if (en && en.boundLevel > 0) {
 			KinkyDungeonApplyBuffToEntity(en, {
-				id: "Lockdown", aura: "#a96ef5", type: "MinBoundLevel", duration: 15, power: Math.min(en.Enemy.maxhp, en.boundLevel), player: true, enemies: true, tags: ["lock", "debuff", "commandword"]
+				id: "Lockdown", aura: "#a96ef5", type: "MinBoundLevel", duration: 9000, power: Math.min(en.Enemy.maxhp, en.boundLevel), maxCount: 1, tags: ["lock", "debuff", "commandword", "CM1"]
 			});
+			KinkyDungeonCastSpell(targetX, targetY, KinkyDungeonFindSpell("EffectEnemyLock1", true), undefined, undefined, undefined);
 			KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell));
+			if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Magic.ogg");
 			return "Cast";
 		} else return "Fail";
+	},
+	"Enemy_CM1": (spell, data, targetX, targetY, tX, tY, entity, enemy, moveDirection, bullet, miscast, faction, cast, selfCast) => {
+		let en = KinkyDungeonEnemyAt(targetX, targetY);
+		if (en) {
+			KinkyDungeonTickBuffTag(en.buffs, "CM1", 1);
+			KinkyDungeonCastSpell(targetX, targetY, KinkyDungeonFindSpell("EffectEnemyCM" + (entity?.Enemy?.unlockCommandLevel || 1), true), undefined, undefined, undefined);
+			if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Magic.ogg");
+			if (entity?.Enemy) {
+				KinkyDungeonSetEnemyFlag(entity, "commandword", entity.Enemy.unlockCommandCD || 90);
+				KinkyDungeonSendActionMessage(7,
+					TextGet("KDCastCM1").replace("EnemyName", TextGet("Name" + entity.Enemy.name)).replace("TargetName", TextGet("Name" + en.Enemy.name)),
+					"#ff5555", 4);
+			}
+			return "Cast";
+		}
+		return "Fail";
 	},
 	"Chastity": (spell, data, targetX, targetY, tX, tY, entity, enemy, moveDirection, bullet, miscast, faction, cast, selfCast) => {
 		let en = KinkyDungeonEnemyAt(targetX, targetY);
@@ -239,8 +260,8 @@ let KinkyDungeonSpellSpecials = {
 				for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 					if (KDistEuclidean(X, Y) <= spell.aoe) {
 						let loc = (tX + X) + "," + (tY + Y);
-						if (KinkyDungeonEffectTiles.get(loc)) {
-							for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+						if (KinkyDungeonEffectTilesGet(loc)) {
+							for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 								if (tile.tags && tile.tags.includes("bind")) {
 									for (let t of tile.tags) {
 										// Run the special feature per restraint type
@@ -318,8 +339,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && tile.tags.includes("slime") && !KinkyDungeonEntityAt(tX+X, tY+Y)) {
 								if (KDRandom() < 0.5)
 									slots.push({x: tX+X, y:tY+Y});
@@ -351,8 +372,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && tile.tags.includes("slime")) {
 								if (!KinkyDungeonEntityAt(tX+X, tY+Y)) {
 									if (KDRandom() < 0.5)
@@ -430,8 +451,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && (tile.tags.includes("slime") || tile.tags.includes("latex"))) {
 								//for (let t of tile.tags) {
 								// Run the special feature per restraint type
@@ -455,8 +476,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && (tile.tags.includes("slime"))) {
 								slots.push({x: tX + X, y: tY+Y, duration: tile.duration});
 							}
@@ -487,8 +508,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && tile.tags.includes("bind")) {
 								for (let t of tile.tags) {
 									// Run the special feature per restraint type
@@ -517,8 +538,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && tile.tags.includes("slime")) {
 								count += 1;
 								if (tile.duration > finalTileDuration) finalTileDuration = tile.duration;
@@ -570,8 +591,8 @@ let KinkyDungeonSpellSpecials = {
 			for (let Y = -Math.ceil(spell.aoe); Y <= Math.ceil(spell.aoe); Y++) {
 				if (KDistEuclidean(X, Y) <= spell.aoe) {
 					let loc = (tX + X) + "," + (tY + Y);
-					if (KinkyDungeonEffectTiles.get(loc)) {
-						for (let tile of KinkyDungeonEffectTiles.get(loc).values()) {
+					if (KinkyDungeonEffectTilesGet(loc)) {
+						for (let tile of Object.values(KinkyDungeonEffectTilesGet(loc))) {
 							if (tile.tags && tile.tags.includes("slime")) {
 								count += 1;
 								tile.duration = 0;
