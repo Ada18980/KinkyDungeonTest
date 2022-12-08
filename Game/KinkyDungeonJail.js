@@ -50,7 +50,8 @@ function KinkyDungeonLoseJailKeys(Taken, boss, enemy) {
 			KinkyDungeonSendActionMessage(7, TextGet("KinkyDungeonRemoveJailKey"), "#ff0000", 3);
 			if (enemy) {
 				if (!enemy.items) enemy.items = [];
-				enemy.items.push("Keyring");
+				if (!enemy.items.includes("Keyring"))
+					enemy.items.push("Keyring");
 			}
 		}
 		KDGameData.JailKey = false;
@@ -680,7 +681,7 @@ function KinkyDungeonHandleLeashTour(xx, yy, type) {
 				KDGameData.KinkyDungeonLeashingEnemy = KinkyDungeonJailGuard().id;
 				KinkyDungeonJailGuard().gx = KinkyDungeonJailGuard().NextJailLeashTourWaypointX;
 				KinkyDungeonJailGuard().gy = KinkyDungeonJailGuard().NextJailLeashTourWaypointY;
-				let guardPath = KinkyDungeonFindPath(KinkyDungeonJailGuard().x, KinkyDungeonJailGuard().y, KinkyDungeonJailGuard().gx, KinkyDungeonJailGuard().gy, false, false, true, KinkyDungeonMovableTiles);
+				let guardPath = KinkyDungeonFindPath(KinkyDungeonJailGuard().x, KinkyDungeonJailGuard().y, KinkyDungeonJailGuard().gx, KinkyDungeonJailGuard().gy, false, false, true, KinkyDungeonMovableTilesEnemy);
 				if (guardPath && guardPath.length > 0 && KDistChebyshev(guardPath[0].x - KinkyDungeonJailGuard().x, guardPath[0].y - KinkyDungeonJailGuard().y) < 1.5) {
 					if (guardPath[0].x === KinkyDungeonPlayerEntity.x && guardPath[0].y === KinkyDungeonPlayerEntity.y) {
 						// Swap the player and the guard
@@ -772,7 +773,8 @@ function KinkyDungeonPointInCell(x, y) {
 	//return (Math.abs(x - KinkyDungeonStartPosition.x) < KinkyDungeonJailLeashX - 1 && Math.abs(y - KinkyDungeonStartPosition.y) <= KinkyDungeonJailLeash);
 }
 
-function KinkyDungeonPassOut() {
+function KinkyDungeonPassOut(noteleport) {
+	KDDefeatedPlayerTick();
 	KDBreakTether();
 	KDGameData.KinkyDungeonLeashedPlayer = 0;
 	KinkyDungeonBlindLevel = 6;
@@ -802,10 +804,13 @@ function KinkyDungeonPassOut() {
 	//if (KinkyDungeonMapGet(nearestJail.x, nearestJail.y) != "B") {
 	// KinkyDungeonCreateMap(params, MiniGameKinkyDungeonLevel);
 	//} else {
-	let point = KinkyDungeonGetRandomEnemyPoint(true, false, undefined);
-	if (point) {
-		KDMovePlayer(point.x, point.y, false);
+	if (!noteleport) {
+		let point = KinkyDungeonGetRandomEnemyPoint(true, false, undefined);
+		if (point) {
+			KDMovePlayer(point.x, point.y, false);
+		}
 	}
+
 
 	for (let e of  KinkyDungeonEntities) {
 		if (e.hostile < 9000) e.hostile = 0;
@@ -829,7 +834,12 @@ function KDGetJailDoor(x, y) {
 	return {tile: KinkyDungeonTilesGet((x) + "," + y), x: x, y: y};
 }
 
+function KDDefeatedPlayerTick() {
+	KinkyDungeonSetFlag("playerDefeated", 1);
+}
+
 function KinkyDungeonDefeat(PutInJail) {
+	KDDefeatedPlayerTick();
 	KDBreakTether();
 	KDGameData.CurrentDialog = "";
 	KDGameData.CurrentDialogStage = "";

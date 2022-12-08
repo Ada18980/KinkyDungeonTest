@@ -117,6 +117,13 @@ interface KDRestraintProps {
 	playerTags?: Record<string, number>,
 	shrine?: string[],
 
+	debris?: string,
+	debrisChance?: number,
+
+	/** These items can only be applied if an enemy has the items in her inventory or the unlimited enemy tag */
+	limited?: boolean,
+	/** Forced to allow these, mainly leashes and collars */
+	unlimited?: boolean,
 
 	/** Affinity type: Hook, Edge, or Sharp, Sticky, defaults are Hook (struggle), Sharp (Cut), Edge (Pick), Sticky (Unlock), and none (Pick)*/
 	affinity?: {
@@ -477,7 +484,37 @@ interface overrideDisplayItem {
 	OverridePriority?: number[]|number,
 }
 
+interface KDLoadout {name: string, tags?: string[], singletag: string[], forbidtags: string[], chance: number, items?: string[], restraintMult?: number};
+
 interface enemy extends KDHasTags {
+	/** Restraint filters */
+	RestraintFilter?: {
+		/** This enemy can apply restraints without needing them in her pockets */
+		unlimitedRestraints?: boolean,
+		/** Restraints applied must all be from inventory */
+		invRestraintsOnly?: boolean,
+		/** Restraints applied must all be limited */
+		limitedRestraintsOnly?: boolean,
+		/** Restraints with more power than this must be in inventory. Default is 3*/
+		powerThresh?: number,
+		/** These wont be added to the initial inventory 3*/
+		ignoreInitial?: string[],
+		/** These wont be added to the initial inventory 3*/
+		ignoreInitialTag?: string[],
+		/** This enemy won't restock restraints out of sight */
+		noRestock?: boolean,
+		/** Enemy will restock to this percentage */
+		restockPercent?: number,
+	}
+
+	/** This enemy wont appear outside of its designated floors even if it shares the tag */
+	noOverrideFloor?: boolean,
+	/** This tag will be added to the selection tags if the enemy has it, for loot and ambush spawning purposes */
+	summonTags?: string[],
+	/** This tag will be added to the selection tags if the enemy has it, for loot and ambush spawning purposes. Multiple copies will be pushed*/
+	summonTagsMulti?: string[],
+	/** If true, this enemy will always be bound to the enemy that summons it */
+	alwaysBound?: boolean,
 	/** These enemies wont appear in distracted mode */
 	arousalMode?: boolean,
 	name: string,
@@ -687,10 +724,16 @@ interface enemy extends KDHasTags {
 	ignoreStaminaForBinds?: boolean,
 	/** */
 	sneakThreshold?: number,
-	/** */
-	remote?: number,
-	/** */
-	remoteAmount?: number,
+	RemoteControl?: {
+		/** */
+		remote?: number,
+		/** */
+		remoteAmount?: number,
+		/** If the enemy has a remote that can control punishing items (e.g. shock collars), the range that they can control items from */
+		punishRemote?: number,
+		/** The chance per tick that the enemy will use their remote remote to punish the player when they are within range */
+		punishRemoteChance?: number,
+	}
 	/** */
 	bypass?: boolean,
 	/** */
@@ -870,6 +913,7 @@ interface weapon {
 
 interface KinkyDungeonEvent {
 	cost?: number,
+	tags?: string[],
 	duration?: number,
 	always?: boolean,
 	type: string;
@@ -929,6 +973,8 @@ interface KinkyDungeonEvent {
 	humanOnly?: boolean;
 	/** Distance having to do with stealth */
 	distStealth?: number;
+	/** Dialogue key an enemy should send */
+	enemyDialogue?: string;
 
 	// MUTABLE QUANTITIES
 	prevSlowLevel?: number;
@@ -941,6 +987,10 @@ interface entity {
 	domVariance?: number,
 	hideTimer?: boolean,
 	Enemy: enemy,
+	/** List an enemy ID. Enemy will be bound to this one and dies if not found. BoundTo of -1 indicates bound to the player, and will expire if the player is jailed or passes out*/
+	boundTo?: number,
+	/** This enemy is weakly bound and simply stunning the caster will delete it */
+	weakBinding?: boolean,
 	player?: boolean,
 	/** This enemy has keys to red locked doors */
 	keys?: boolean,
@@ -1586,6 +1636,8 @@ interface KinkyDungeonSave {
 	KinkyDungeonGridWidth: number;
 	KinkyDungeonGridHeight: number;
 	KinkyDungeonFogGrid: any[];
+	KinkyDungeonStartPosition: {x: number, y: number};
+	KinkyDungeonEndPosition: {x: number, y: number};
 }
 
 
@@ -1638,6 +1690,11 @@ type AIType = {
 	aftermove: (enemy, player, aidata) => boolean,
 	/** This executes after enemy is determined to be idle or not. If true, prevents spells.*/
 	afteridle?: (enemy, player, aidata) => boolean,
+	/** Returns the current wander long delay.*/
+	wanderDelay_long?: (enemy, aidata) => number,
+	/** Returns the current wander short delay.*/
+	wanderDelay_short?: (enemy, aidata) => number,
+
 }
 
 type EnemyEvent = {
@@ -1672,6 +1729,7 @@ type KDLockType = {
 	pickable: boolean;
 	pick_time: number;
 	pick_diff: number;
+	pick_lim?: number;
 	canPick: (data: any) => boolean;
 	doPick: (data: any) => boolean;
 	failPick: (data: any) => string;
@@ -1701,6 +1759,8 @@ type KDMapTile = {
     h: number;
 	primInd: string,
     index: Record<string, string>;
+    flexEdge?: Record<string, string>;
+    flexEdgeSuper?: Record<string, string>;
     scale: number;
     category: string;
     weight: number;
@@ -1746,6 +1806,15 @@ interface KDBondage {
 interface KDCursedVar {
 	variant: (restraint: restraint, newRestraintName: string) => any,
 	level: number,
+}
+
+interface KDDelayedAction {
+	data: any,
+	time: number,
+	commit: string,
+	update?: string,
+	/** Cancel this in certain cases */
+	tags: string[],
 }
 
 

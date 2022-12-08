@@ -149,7 +149,10 @@ let KDEventMapInventory = {
 			KinkyDungeonApplyBuffToEntity(KinkyDungeonPlayerEntity, {id: item.name + "Evasion", type: "Evasion", power: e.power, duration: 2,});
 		},
 		"buff": (e, item, data) => {
-			KinkyDungeonApplyBuffToEntity(KinkyDungeonPlayerEntity, {id: item.name + e.buff, type: e.buff, power: e.power, duration: 2,});
+			KinkyDungeonApplyBuffToEntity(KinkyDungeonPlayerEntity, {id: item.name + e.buff, type: e.buff, power: e.power, duration: 2,
+				tags: e.tags,
+				currentCount: e.mult ? -1 : undefined,
+				maxCount: e.mult,});
 		},
 		"restraintBlock": (e, item, data) => {
 			KinkyDungeonApplyBuffToEntity(KinkyDungeonPlayerEntity, {id: item.name + "Block", type: "RestraintBlock", power: e.power, duration: 2,});
@@ -180,6 +183,9 @@ let KDEventMapInventory = {
 				id: item.name,
 				type: e.buffType,
 				power: e.power,
+				tags: e.tags,
+				currentCount: e.mult ? -1 : undefined,
+				maxCount: e.mult,
 				duration: 2
 			});
 		},
@@ -254,12 +260,12 @@ let KDEventMapInventory = {
 		},
 		"EnchantedAnkleCuffs2": (e, item, data) => {
 			KinkyDungeonRemoveRestraint(KDRestraint(item).Group);
-			KinkyDungeonAddRestraint(KinkyDungeonGetRestraintByName("EnchantedAnkleCuffs"), 0, true, undefined, undefined, undefined, undefined, undefined, item.faction);
+			KinkyDungeonAddRestraint(KinkyDungeonGetRestraintByName("EnchantedAnkleCuffs"), 0, true, undefined, false, undefined, undefined, undefined, item.faction);
 		},
 		"EnchantedAnkleCuffs": (e, item, data) => {
 			if (KDGameData.AncientEnergyLevel <= 0.0000001) {
 				KinkyDungeonRemoveRestraint(KDRestraint(item).Group);
-				KinkyDungeonAddRestraint(KinkyDungeonGetRestraintByName("EnchantedAnkleCuffs2"), 0, true, undefined, undefined, undefined, undefined, undefined, item.faction);
+				KinkyDungeonAddRestraint(KinkyDungeonGetRestraintByName("EnchantedAnkleCuffs2"), 0, true, undefined, false, undefined, undefined, undefined, item.faction);
 			}
 		},
 		"RegenMana": (e, item, data) => {
@@ -302,7 +308,7 @@ let KDEventMapInventory = {
 			if (e.power) {
 				KinkyDungeonChangeMana(e.power);
 				KinkyDungeonChangeStamina(e.power);
-				KinkyDungeonSendTextMessage(1, TextGet("KinkyDungeonIceDrain"), "lightblue", 2);
+				KinkyDungeonSendTextMessage(1, TextGet("KinkyDungeonIceDrain"), "lightblue", 2, false, true);
 			}
 		},
 		"crystalDrain": (e, item, data) => {
@@ -310,14 +316,14 @@ let KDEventMapInventory = {
 			if (e.power) {
 				KinkyDungeonChangeMana(e.power);
 				KinkyDungeonChangeDistraction(-e.power * 3, false, 0.1);
-				KinkyDungeonSendTextMessage(1, TextGet("KinkyDungeonCrystalDrain"), "lightblue", 2);
+				KinkyDungeonSendTextMessage(1, TextGet("KinkyDungeonCrystalDrain"), "lightblue", 2, false, true);
 			}
 		},
 		"tickleDrain": (e, item, data) => {
 			if (!data.delta) return;
 			if (e.power) {
 				KinkyDungeonChangeDistraction(-e.power, false, 0.01);
-				KinkyDungeonSendTextMessage(0.5, TextGet("KinkyDungeonTickleDrain"), "lightblue", 2);
+				KinkyDungeonSendTextMessage(0.5, TextGet("KinkyDungeonTickleDrain"), "lightblue", 2, false, true);
 			}
 		},
 		"barrelDebuff": (e, item, data) => {
@@ -369,13 +375,14 @@ let KDEventMapInventory = {
 				}
 			}
 			let guard = KinkyDungeonJailGuard();
-			if (guard && KDGameData.CagedTime > KDMaxCageTime && KDistChebyshev(guard.x - KinkyDungeonPlayerEntity.x, guard.y - KinkyDungeonPlayerEntity.y) < 4) {
+			if (guard && !KinkyDungeonFlags.has("guardTP") && KDGameData.CagedTime > KDMaxCageTime && KDistChebyshev(guard.x - KinkyDungeonPlayerEntity.x, guard.y - KinkyDungeonPlayerEntity.y) > 4) {
 				DialogueBringSpecific(KinkyDungeonPlayerEntity.x, KinkyDungeonPlayerEntity.y, guard);
+				KinkyDungeonSetFlag("guardTP", 20);
 			}
 		},
 		"slimeSpread": (e, item, data) => {
 			if (!data.delta) return;
-			let mult = Math.max(0.25, Math.min(2.0,
+			let mult = 0.1 * Math.max(0.25, Math.min(2.0,
 				KinkyDungeonMultiplicativeStat(KinkyDungeonGetBuffedStat(KinkyDungeonPlayerBuffs, "glueDamageResist"))));
 			KDEventData.SlimeLevel = Math.max(KDEventData.SlimeLevel, KDEventData.SlimeLevelStart + e.power * mult);
 			if (KDEventData.SlimeLevel >= 0.99999) {
@@ -501,6 +508,20 @@ let KDEventMapInventory = {
 				if (!cuffsbase) {
 					KinkyDungeonRemoveRestraint(KDRestraint(item).Group, false, false, false);
 					KinkyDungeonSendTextMessage(4, TextGet("KinkyDungeonRemoveCuffs"), "lightgreen", 2);
+				}
+			}
+		},
+		"RequireCollar": (e, item, data) => {
+			if (data.item !== item && KDRestraint(item).Group) {
+				let collar = false;
+				for (let inv of KinkyDungeonAllRestraint()) {
+					if (KDRestraint(inv).shrine && (KDRestraint(inv).shrine.includes("Collars"))) {
+						collar = true;
+						break;
+					}
+				}
+				if (!collar) {
+					KinkyDungeonRemoveRestraint(KDRestraint(item).Group, false, false, false);
 				}
 			}
 		},
@@ -881,6 +902,50 @@ let KDEventMapInventory = {
 				KinkyDungeonStartVibration(item.name, "tease", KDGetVibeLocation(item), e.power, e.time, undefined, undefined, undefined, undefined, e.edgeOnly);
 				KinkyDungeonSendTextMessage(5, TextGet("KinkyDungeonStartVibeRemote").replace("EnemyName", TextGet("Name" + data.enemy)), "pink", 2);
 				if (e.sfx) KinkyDungeonPlaySound(KinkyDungeonRootDirectory + "/Audio/" + e.sfx + ".ogg");
+			}
+		}
+	},
+	"remotePunish": {
+		"RemoteActivatedShock": (e, item, data) => {
+			/** @type {entity} */
+			const enemy = data.enemy;
+			if (!enemy || KDRandom() >= (enemy.Enemy.RemoteControl?.punishRemoteChance || 0.25) || KDEnemyHasFlag(enemy, "remoteShockCooldown") || (e.noLeash && KDGameData.KinkyDungeonLeashedPlayer >= 1)) {
+				return;
+			}
+			// 7 tick cooldown stops it feeling overly spammy
+			KinkyDungeonSetEnemyFlag(enemy, "remoteShockCooldown", 7);
+			if (e.stun) {
+				KinkyDungeonStatBlind = Math.max(KinkyDungeonStatBlind, e.stun);
+				KinkyDungeonMovePoints = Math.max(-1, KinkyDungeonMovePoints - 1); // This is to prevent stunlock while slowed heavily
+			}
+			KinkyDungeonDealDamage({damage: e.power, type: e.damage});
+			const msg = TextGet(e.msg ? e.msg : "KinkyDungeonRemoteShock")
+				.replace("RestraintName", TextGet(`Restraint${item.name}`))
+				.replace("EnemyName", TextGet(`Name${enemy.Enemy.name}`));
+			KinkyDungeonSendTextMessage(5, msg, "#ff8800", 2);
+			if (e.sfx) KinkyDungeonPlaySound(`${KinkyDungeonRootDirectory}/Audio/${e.sfx}.ogg`);
+		},
+		"RemoteLinkItem": (e, item, data) => {
+			const enemy = data.enemy;
+			if (KDRandom() >= (enemy.Enemy.RemoteControl?.punishRemoteChance || 0.1) || (e.noLeash && KDGameData.KinkyDungeonLeashedPlayer >= 1)) {
+				return;
+			}
+
+			const newRestraint = KinkyDungeonGetRestraintByName(KDRestraint(item).Link);
+			if (e.sfx) KinkyDungeonPlaySound(`${KinkyDungeonRootDirectory}/Audio/${e.sfx}.ogg`);
+
+			KinkyDungeonAddRestraint(newRestraint, item.tightness, true, "", false, undefined, undefined, undefined, item.faction, undefined, undefined, undefined, false);
+
+			if (e.enemyDialogue) {
+				const dialogue = KinkyDungeonGetTextForEnemy(e.enemyDialogue, enemy);
+				KinkyDungeonSendDialogue(enemy, dialogue, KDGetColor(enemy), 2, 4);
+			}
+
+			if (e.msg) {
+				const msg = TextGet(e.msg)
+					.replace("RestraintName", TextGet(`Restraint${item.name}`))
+					.replace("EnemyName", TextGet(`Name${enemy.Enemy.name}`));
+				KinkyDungeonSendTextMessage(5, msg, "#ff8800", 2);
 			}
 		}
 	},
@@ -1525,12 +1590,16 @@ let KDEventMapSpell = {
 	},
 	"tick": {
 		"Buff": (e, spell, data) => {
-			KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {
-				id: spell.name,
-				type: e.buffType,
-				power: e.power,
-				duration: 2
-			});
+			if (KDCheckPrereq(null, e.prereq, e, data))
+				KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {
+					id: spell.name,
+					type: e.buffType,
+					power: e.power,
+					tags: e.tags,
+					currentCount: e.mult ? -1 : undefined,
+					maxCount: e.mult,
+					duration: 2
+				});
 		},
 		"SlimeMimic": (e, spell, data) => {
 			if (KinkyDungeonLastAction == "Wait"
@@ -1553,6 +1622,19 @@ let KDEventMapSpell = {
 					duration: 1,
 					power: e.power,
 				});
+			}
+		},
+		"Analyze": (e, spell, data) => {
+			let activate = false;
+			if (KinkyDungeonHasMana(KinkyDungeonGetManaCost(spell)) && !KinkyDungeonPlayerBuffs.Analyze) {
+				KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {id: "Analyze", aura:"#ff5555", type: "MagicalSight", power: e.power, duration: e.time});
+				activate = true;
+			}
+			if (KinkyDungeonPlayerBuffs.Analyze && KinkyDungeonPlayerBuffs.Analyze.duration > 1) {
+				// Nothing!
+			} else if (!activate) {
+				KinkyDungeonDisableSpell("Analyze");
+				KinkyDungeonExpireBuff(KinkyDungeonPlayerBuffs, "Analyze");
 			}
 		},
 	},
@@ -1683,6 +1765,14 @@ let KDEventMapSpell = {
 				}
 			}
 		},
+		"CritBoost": (e, spell, data) => {
+			if (data.eva&& !data.miss && !data.disarm && data.targetX && data.targetY && data.enemy && KDHostile(data.enemy)) {
+				if (KDCheckPrereq(null, e.prereq, e, data)) {
+					let power = Math.max(0, Math.max(((KinkyDungeonPlayerDamage.chance || 0) - 1)*e.power));
+					data.buffdmg = Math.max(0, data.buffdmg + (KinkyDungeonPlayerDamage.dmg || 0) * power);
+				}
+			}
+		},
 	},
 	"calcDisplayDamage": {
 		"BoostDamage": (e, spell, data) => {
@@ -1690,6 +1780,12 @@ let KDEventMapSpell = {
 				if (KDCheckPrereq(null, e.prereq, e, data)) {
 					data.buffdmg = Math.max(0, data.buffdmg + e.power);
 				}
+			}
+		},
+		"CritBoost": (e, spell, data) => {
+			if (KDCheckPrereq(null, e.prereq, e, data)) {
+				let power = Math.max(0, Math.max(((KinkyDungeonPlayerDamage.chance || 0) - 1)*e.power));
+				data.buffdmg = Math.max(0, data.buffdmg + (KinkyDungeonPlayerDamage.dmg || 0) * power);
 			}
 		},
 	},
@@ -1783,7 +1879,7 @@ let KDEventMapSpell = {
 			let activate = false;
 			if (KinkyDungeonHasMana(KinkyDungeonGetManaCost(spell)) && !KinkyDungeonPlayerBuffs.EnemySense) {
 				KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell) * data.update);
-				KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {id: "EnemySense", type: "EnemySense", duration: 5});
+				KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {id: "EnemySense", type: "EnemySense", duration: 13});
 				activate = true;
 			}
 			if (KinkyDungeonPlayerBuffs.EnemySense && KinkyDungeonPlayerBuffs.EnemySense.duration > 1)
@@ -1826,6 +1922,9 @@ let KDEventMapSpell = {
 	"toggleSpell": {
 		"Light": (e, spell, data) => {
 			KinkyDungeonUpdateLightGrid = true;
+		},
+		"Analyze": (e, spell, data) => {
+			KinkyDungeonAdvanceTime(0, true, true);
 		},
 	},
 	"enemyStatusEnd": {
@@ -1965,21 +2064,29 @@ let KDEventMapWeapon = {
 			}
 		},
 		"Buff": (e, weapon, data) => {
-			KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {
-				id: weapon.name,
-				type: e.buffType,
-				power: e.power,
-				duration: 2
-			});
-		},
-		"BuffMulti": (e, weapon, data) => {
-			for (let buff of e.buffTypes)
+			if (KDCheckPrereq(null, e.prereq, e, data))
 				KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {
-					id: weapon.name + buff,
-					type: buff,
+					id: weapon.name,
+					type: e.buffType,
 					power: e.power,
+					tags: e.tags,
+					currentCount: e.mult ? -1 : undefined,
+					maxCount: e.mult,
 					duration: 2
 				});
+		},
+		"BuffMulti": (e, weapon, data) => {
+			if (KDCheckPrereq(null, e.prereq, e, data))
+				for (let buff of e.buffTypes)
+					KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, {
+						id: weapon.name + buff,
+						type: buff,
+						power: e.power,
+						tags: e.tags,
+						currentCount: e.mult ? -1 : undefined,
+						maxCount: e.mult,
+						duration: 2
+					});
 		},
 
 		"AoEDamageFrozen": (e, weapon, data) => {
@@ -2741,6 +2848,12 @@ function KinkyDungeonHandleBulletEvent(Event, e, b, data) {
  * @type {Object.<string, Object.<string, function(KinkyDungeonEvent, entity, *): void>>}
  */
 let KDEventMapEnemy = {
+	"passout": {
+		"delete": (e, enemy, data) => {
+			if (!e.chance || KDRandom() < e.chance)
+				enemy.hp = 0;
+		}
+	},
 	"calcManaPool": {
 		"PetManaRegen": (e, enemy, data) => {
 			if (KDAllied(enemy) && KDistChebyshev(enemy.x - data.player.x, enemy.y - data.player.y) < e.dist) {
@@ -2870,8 +2983,36 @@ let KDEventMapEnemy = {
 				}
 			}
 		},
+		"wolfShieldDroneAura": (e, enemy, data) => {
+			// We apply a buff to nearby allies, but not self
+			if (data.delta && KinkyDungeonCanCastSpells(enemy) && ((data.allied && KDAllied(enemy)) || (!data.allied && !KDAllied(enemy)))) {
+				if (!e.chance || KDRandom() < e.chance) {
+					let nearby = KDNearbyNeutrals(enemy.x, enemy.y, e.dist, enemy);
+					for (let en of nearby) {
+						if (en != enemy && en.hp > 0.52 && KDMatchTags(["nevermere", "wolfgirl", "alchemist", "dressmaker", "bountyhunter"], en)) {
+							KinkyDungeonApplyBuffToEntity(en, {
+								id: "WolfDroneArmor", aura: "#00ffff", type: "Armor", duration: 1.1, power: e.power, player: false, enemies: true, tags: ["defense", "armor"]
+							});
+							KinkyDungeonApplyBuffToEntity(en, {
+								id: "WolfDroneSpellResist", type: "SpellResist", duration: 1.1, power: e.power, player: false, enemies: true, tags: ["defense", "spellresist"]
+							});
+						}
+					}
+				}
+			}
+		},
+		"maidforceHeadAura": (e, enemy, data) => {
+			// We apply a buff to nearby allies, but not self
+			if (data.delta && KinkyDungeonCanCastSpells(enemy) && ((data.allied && KDAllied(enemy)) || (!data.allied && !KDAllied(enemy)))) {
+				if (!e.chance || KDRandom() < e.chance) {
+					if (enemy.aware && KinkyDungeonAggressive(enemy) && (KDPlayerIsStunned())) {
+						KinkyDungeonPlayerEffect("charm", {name: "MaidChastity", power: 2, damage: "charm"});
+					}
+				}
+			}
+		},
 		"electrifyLocal": (e, enemy, data) => {
-			if (data.delta && (enemy.aware || enemy.vp > 0.5) && (KDNearbyEnemies(enemy.x, enemy.y, 1.5, enemy).length > 0 || KDHostile(enemy)) && KinkyDungeonCanCastSpells(enemy) && ((data.allied && KDAllied(enemy)) || (!data.allied && !KDAllied(enemy)))) {
+			if (data.delta && (enemy.aware || enemy.vp > 0.5) && (KDNearbyEnemies(enemy.x, enemy.y, 1.5, enemy).length > 0 || KinkyDungeonAggressive(enemy)) && KinkyDungeonCanCastSpells(enemy) && ((data.allied && KDAllied(enemy)) || (!data.allied && !KDAllied(enemy)))) {
 				if (!e.chance || KDRandom() < e.chance) {
 					let count = e.power ? e.power : 1;
 					let rad = e.aoe ? e.aoe : 1.5;
@@ -3249,6 +3390,16 @@ let KDEventMapGeneric = {
 					} else {
 						KinkyDungeonDamageEnemy(data.attacker, {damage: KinkyDungeonStatWillMax*0.20, type: "acid"}, false, false, undefined, undefined, KinkyDungeonPlayerEntity);
 					}
+				}
+			}
+		},
+	},
+	"perksStruggleCalc": {
+		"CursedLocks": (e, data) => {
+			if (KinkyDungeonStatsChoice.get("CursedLocks") && data.struggleType == "Cut" && data.restraint.lock) {
+				data.escapeChance = -100;
+				if (data.Msg) {
+					KinkyDungeonSendTextMessage(10, TextGet("KDCursedLocks"), "#aa4488", 1.1);
 				}
 			}
 		},

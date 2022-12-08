@@ -92,7 +92,7 @@ function KinkyDungeonGetShopItem(Level, Rarity, Shop) {
 
 	// No duplicates
 	for (let R = Rarity; R >= 0; R--) {
-		let available = Table.filter((item) => (item.rarity == R && !KinkyDungeonShopItems.some((item2) => {return item2.name == item.name;})));
+		let available = Table.filter((item) => (item.rarity == R && !KDGameData.ShopItems.some((item2) => {return item2.name == item.name;})));
 		if (available.length > 0) return available[Math.floor(KDRandom() * available.length)];
 	}
 	return null;
@@ -259,11 +259,35 @@ function KinkyDungeonAttemptConsumable(Name, Quantity) {
 
 	if (KDConsumable(item).postreq && KDConsumablePrereq[KDConsumable(item).postreq]) {
 		if (KDConsumablePrereq[KDConsumable(item).postreq](item, Quantity)) {
-			KinkyDungeonUseConsumable(Name, Quantity);
+			KDDelayedActionPrune(["Action", "Consume"]);
+			if (KDConsumable(item.item).potion && KinkyDungeonStatsChoice.has("SavourTheTaste")) {
+				KDAddDelayedAction({
+					commit: "Consumable",
+					data: {
+						Name: Name,
+						Quantity: Quantity,
+					},
+					time: 2,
+					tags: ["Action", "Remove", "Restrain"],
+				});
+				KDStunTurns(2);
+			} else KinkyDungeonUseConsumable(Name, Quantity);
 			return true;
 		} else return false;
 	}
-	KinkyDungeonUseConsumable(Name, Quantity);
+	KDDelayedActionPrune(["Action", "Consume"]);
+	if (KDConsumable(item.item).potion && KinkyDungeonStatsChoice.has("SavourTheTaste")) {
+		KDAddDelayedAction({
+			commit: "Consumable",
+			data: {
+				Name: Name,
+				Quantity: Quantity,
+			},
+			time: 2,
+			tags: ["Action", "Remove", "Restrain"],
+		});
+		KDStunTurns(2);
+	} else KinkyDungeonUseConsumable(Name, Quantity);
 	return true;
 }
 

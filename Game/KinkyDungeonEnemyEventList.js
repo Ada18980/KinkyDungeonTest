@@ -26,6 +26,7 @@ let KDIntentEvents = {
 			let nearestfurniture = KinkyDungeonNearestJailPoint(enemy.x, enemy.y, ["furniture"]);
 			enemy.IntentLeashPoint = nearestfurniture;
 			enemy.playWithPlayer = 22;
+			enemy.playWithPlayerCD = 30;
 
 			KinkyDungeonSetEnemyFlag(enemy, "playstart", 3);
 
@@ -40,14 +41,16 @@ let KDIntentEvents = {
 			enemy.IntentLeashPoint = null;
 			KinkyDungeonSetEnemyFlag(enemy, "noResetIntent", -1);
 			enemy.playWithPlayer = 12 + Math.floor(KDRandom() * 12);
+			enemy.playWithPlayerCD = 30;
 			KinkyDungeonSetEnemyFlag(enemy, "playstart", 7);
 			return KDSettlePlayerInFurniture(enemy, AIData);
 		},
 		maintain: (enemy, delta) => {
 			if (KDistChebyshev(enemy.x - KinkyDungeonPlayerEntity.x, enemy.y - KinkyDungeonPlayerEntity.y) < 1.5) {
-				if (enemy.playWithPlayer < 8) {
-					enemy.playWithPlayer = 8;
-				} else enemy.playWithPlayer += delta;
+				if (enemy.playWithPlayer < 10) {
+					enemy.playWithPlayer = 10;
+					enemy.playWithPlayerCD = Math.max(enemy.playWithPlayerCD, 15);
+				}// else enemy.playWithPlayer += delta;
 			}
 			return false;
 		},
@@ -73,7 +76,7 @@ let KDIntentEvents = {
 			enemy.playWithPlayer = 8 + Math.floor(KDRandom() * (5 * Math.min(5, Math.max(enemy.Enemy.attackPoints || 0, enemy.Enemy.movePoints || 0))));
 			KinkyDungeonSetEnemyFlag(enemy, "playstart", 7);
 			enemy.playWithPlayerCD = 20 + enemy.playWithPlayer * 2.5;
-			if (AIData.domMe) enemy.playWithPlayer = enemy.playWithPlayerCD;
+			if (AIData.domMe) enemy.playWithPlayer = Math.floor(enemy.playWithPlayerCD * 0.8);
 			KDAddThought(enemy.id, "Play", 4, enemy.playWithPlayer);
 
 			let index = Math.floor(Math.random() * 3);
@@ -103,7 +106,7 @@ let KDIntentEvents = {
 					KDResetIntent(enemy, undefined);
 					KinkyDungeonSetEnemyFlag(enemy, "noResetIntent", -1);
 					if (enemy.playWithPlayer > 0)
-						enemy.playWithPlayerCD = 30;
+						enemy.playWithPlayerCD = Math.max(enemy.playWithPlayer, 30);
 					KinkyDungeonSetFlag("Released", 24);
 					KinkyDungeonSetFlag("nojailbreak", 12);
 				} else {
@@ -148,7 +151,10 @@ let KDIntentEvents = {
 			if (KDGameData.PrisonerState == 'parole') {
 				KinkyDungeonSendDialogue(enemy, TextGet("KinkyDungeonJailer" + KDJailPersonality(enemy) + "Mistake").replace("EnemyName", TextGet("Name" + enemy.Enemy.name)), KDGetColor(enemy), 6, 8);
 				KDBreakTether();
+				if (enemy.IntentLeashPoint)
+					KDMovePlayer(enemy.IntentLeashPoint.x, enemy.IntentLeashPoint.y, false, false);
 				KDResetIntent(enemy, AIData);
+				enemy.playWithPlayer = 0;
 				enemy.playWithPlayerCD = 24;
 				return true;
 			}
@@ -197,9 +203,9 @@ let KDIntentEvents = {
 		},
 		maintain: (enemy, delta) => {
 			if (KDistChebyshev(enemy.x - KinkyDungeonPlayerEntity.x, enemy.y - KinkyDungeonPlayerEntity.y) < 1.5) {
-				if (enemy.playWithPlayer < 8) {
-					enemy.playWithPlayer = 8;
-				} else enemy.playWithPlayer += delta;
+				if (enemy.playWithPlayer < 10) {
+					enemy.playWithPlayer = 10;
+				}// else enemy.playWithPlayer += delta;
 			}
 			return false;
 		},

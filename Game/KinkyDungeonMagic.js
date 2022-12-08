@@ -69,8 +69,8 @@ function KinkyDungeonDisableSpell(Name) {
 let KinkyDungeonSpellPress = "";
 
 function KinkyDungeonResetMagic() {
-	KinkyDungeonSpellChoices = [0, 1];
-	KinkyDungeonSpellChoicesToggle = [true, true];
+	KinkyDungeonSpellChoices = [0];
+	KinkyDungeonSpellChoicesToggle = [true];
 	KinkyDungeonSpellChoiceCount = 21;
 	KinkyDungeonSpells = [];
 	Object.assign(KinkyDungeonSpells, KinkyDungeonSpellsStart); // Copy the dictionary
@@ -570,7 +570,7 @@ function KinkyDungeonCastSpell(targetX, targetY, spell, enemy, player, bullet, f
 			}
 			let b = KinkyDungeonLaunchBullet(xx, yy,
 				tX-entity.x,tY - entity.y,
-				speed, {noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:size, height:size, summon:spell.summon, cast: cast, dot: spell.dot,
+				speed, {noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:size, height:size, summon:spell.summon, source: entity?.player ? -1 : entity?.id, cast: cast, dot: spell.dot,
 					bulletColor: spell.bulletColor, bulletLight: spell.bulletLight,
 					bulletSpin: spell.bulletSpin,
 					effectTile: spell.effectTile, effectTileDurationMod: spell.effectTileDurationMod,
@@ -592,7 +592,7 @@ function KinkyDungeonCastSpell(targetX, targetY, spell, enemy, player, bullet, f
 			let b = KinkyDungeonLaunchBullet(tX, tY,
 				moveDirection.x,moveDirection.y,
 				0, {
-					noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:sz, height:sz, summon:spell.summon, lifetime:spell.delay +
+					noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:sz, height:sz, summon:spell.summon, source: entity?.player ? -1 : entity?.id, lifetime:spell.delay +
 						(spell.delayRandom ? Math.floor(KDRandom() * spell.delayRandom) : 0), cast: cast, dot: spell.dot, events: spell.events, alwaysCollideTags: spell.alwaysCollideTags,
 					bulletColor: spell.bulletColor, bulletLight: spell.bulletLight,
 					bulletSpin: spell.bulletSpin,
@@ -609,7 +609,7 @@ function KinkyDungeonCastSpell(targetX, targetY, spell, enemy, player, bullet, f
 			}
 			let b = {x: tX, y:tY,
 				vx: moveDirection.x,vy: moveDirection.y, born: 1,
-				bullet: {noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:sz, height:sz, summon:spell.summon, lifetime:spell.lifetime, cast: cast, dot: spell.dot, events: spell.events, aoe: spell.aoe,
+				bullet: {noSprite: spell.noSprite, faction: faction, name:spell.name, block: spell.block, width:sz, height:sz, summon:spell.summon, source: entity?.player ? -1 : entity?.id, lifetime:spell.lifetime, cast: cast, dot: spell.dot, events: spell.events, aoe: spell.aoe,
 					passthrough:(spell.CastInWalls || spell.WallsOnly || spell.noTerrainHit), hit:spell.onhit, noDoubleHit: spell.noDoubleHit, effectTile: spell.effectTile, effectTileDurationMod: spell.effectTileDurationMod,
 					damage: {evadeable: spell.evadeable, damage:spell.power, type:spell.damage, distract: spell.distract, distractEff: spell.distractEff, bindEff: spell.bindEff, bind: spell.bind, bindType: spell.bindType, boundBonus: spell.boundBonus, time:spell.time, flags:spell.damageFlags}, spell: spell}};
 			KinkyDungeonBulletHit(b, 1);
@@ -620,18 +620,22 @@ function KinkyDungeonCastSpell(targetX, targetY, spell, enemy, player, bullet, f
 			if (!aoe) aoe = 0.1;
 			if (Math.sqrt((KinkyDungeonPlayerEntity.x - targetX) * (KinkyDungeonPlayerEntity.x - targetX) + (KinkyDungeonPlayerEntity.y - targetY) * (KinkyDungeonPlayerEntity.y - targetY)) <= aoe) {
 				for (let buff of spell.buffs) {
-					KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, buff);
-					if (KinkyDungeonPlayerEntity.x == targetX && KinkyDungeonPlayerEntity.y == targetY) data.target = KinkyDungeonPlayerEntity;
-					casted = true;
+					if (buff.player) {
+						KinkyDungeonApplyBuff(KinkyDungeonPlayerBuffs, buff);
+						if (KinkyDungeonPlayerEntity.x == targetX && KinkyDungeonPlayerEntity.y == targetY) data.target = KinkyDungeonPlayerEntity;
+						casted = true;
+					}
 				}
 			}
 			for (let e of KinkyDungeonEntities) {
 				if (Math.sqrt((e.x - targetX) * (e.x - targetX) + (e.y - targetY) * (e.y - targetY)) <= aoe) {
 					for (let buff of spell.buffs) {
-						if (!e.buffs) e.buffs = [];
-						KinkyDungeonApplyBuff(e.buffs, buff);
-						if (e.x == targetX && e.y == targetY) data.target = e;
-						casted = true;
+						if (!spell.filterTags || KDMatchTags(spell.filterTags, e)) {
+							if (!e.buffs) e.buffs = {};
+							KinkyDungeonApplyBuff(e.buffs, buff);
+							if (e.x == targetX && e.y == targetY) data.target = e;
+							casted = true;
+						}
 					}
 				}
 			}
@@ -700,6 +704,7 @@ function KinkyDungeonCastSpell(targetX, targetY, spell, enemy, player, bullet, f
 		KinkyDungeonChangeMana(-KinkyDungeonGetManaCost(spell));
 		if (spell.staminacost) KinkyDungeonChangeStamina(-spell.staminacost);
 		if (spell.channel) {
+			KinkyDungeonSetFlag("channeling", spell.channel);
 			KinkyDungeonSlowMoveTurns = Math.max(KinkyDungeonSlowMoveTurns, spell.channel);
 			KinkyDungeonSleepTime = CommonTime() + 200;
 		}
@@ -1338,4 +1343,19 @@ function KDCastSpellToEnemies(fn, tX, tY, spell) {
 	}
 
 	return cast;
+}
+
+/**
+ * Returns true if the enemy matches one of the tags
+ * @param {string[]} tags
+ * @param {entity} entity
+ * @returns {boolean}
+ */
+function KDMatchTags(tags, entity) {
+	if (tags) {
+		for (let tag of tags) {
+			if (entity?.Enemy?.tags[tag]) return true;
+		}
+	}
+	return false;
 }

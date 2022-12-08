@@ -64,17 +64,23 @@ let KDMoveObjectFunctions = {
 				KinkyDungeonSendActionMessage(10, TextGet("KDDoorknobFeet"), "#88ff88", 2);
 				open = true;
 			} else {
+				let grace = 0;
+				if (KinkyDungeonFlags.get("failUnfairFirst") && !KinkyDungeonFlags.get("failUnfair")) grace = 0.4;
 				let armsbound = KinkyDungeonIsArmsBound(true, true);
-				if (KDRandom() < (armsbound ? KDDoorKnobChance : KDDoorKnobChanceArms)) {
+				if (KDRandom() - grace < (armsbound ? KDDoorKnobChance : KDDoorKnobChanceArms)) {
 					KinkyDungeonSendActionMessage(10, TextGet("KDDoorknobSuccess" + ((armsbound) ? "" : "Arms")), "#88ff88", 2);
 					open = true;
-				} else if (KDRandom() < (armsbound ? KDDoorAttractChance : KDDoorAttractChanceArms) && DialogueBringNearbyEnemy(moveX, moveY, 10)) {
+				} else if (KDRandom() - grace < (armsbound ? KDDoorAttractChance : KDDoorAttractChanceArms) && DialogueBringNearbyEnemy(moveX, moveY, 10)) {
 					KinkyDungeonSendActionMessage(10, TextGet("KDDoorknobAttract" + ((armsbound) ? "" : "Arms")), "#ff5555", 2);
 					KinkyDungeonMakeNoise(armsbound ? 6 : 3, moveX, moveY);
 					open = true;
 				} else {
 					KinkyDungeonSendActionMessage(10, TextGet("KDDoorknobFail" + (armsbound ? "" : "Arms")), "#ff5555", 2);
 					KinkyDungeonMakeNoise(armsbound ? 6 : 3, moveX, moveY);
+					if (!KinkyDungeonFlags.get("failUnfairFirst")) {
+						KinkyDungeonSetFlag("failUnfair", 5);
+						KinkyDungeonSetFlag("failUnfairFirst", 10);
+					}
 					if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/Locked.ogg");
 				}
 			}
@@ -101,10 +107,10 @@ let KDMoveObjectFunctions = {
 		let roll = KinkyDungeonTilesGet(moveX + "," +moveY) ? KinkyDungeonTilesGet(moveX + "," +moveY).Roll : KDRandom();
 		if (faction && !KinkyDungeonChestConfirm) {
 			KinkyDungeonChestConfirm = true;
-			KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonChestFaction").replace("FACTION", TextGet("KinkyDungeonFaction" + faction)), "#ff0000", 2);
+			KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonChestFaction").replace("FACTION", TextGet("KinkyDungeonFaction" + faction)), "#ff0000", 2, true);
 		} else {
 			KinkyDungeonLoot(MiniGameKinkyDungeonLevel, KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint], chestType, roll, KinkyDungeonTilesGet(moveX + "," +moveY), undefined, noTrap);
-			if (lootTrap) KDSpawnLootTrap(moveX, moveY, lootTrap.trap, lootTrap.mult, lootTrap.duration);
+			if (lootTrap) KDSpawnLootTrap(KinkyDungeonPlayerEntity.x, KinkyDungeonPlayerEntity.y, lootTrap.trap, lootTrap.mult, lootTrap.duration);
 			if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/ChestOpen.ogg");
 			KinkyDungeonMapSet(moveX, moveY, 'c');
 			KDGameData.AlreadyOpened.push({x: moveX, y: moveY});
@@ -269,18 +275,18 @@ let KDEffectTileFunctions = {
 				if (entity.player) {
 					let latexData = {
 						cancelDamage: false,
-						dmg: KDLatexDmg,
+						dmg: KDLatexDmg*KDGetEnvironmentalDmg(),
 						type: "glue",
 					};
 					KinkyDungeonSendEvent("tickLatexPlayer", latexData);
 					if (!latexData.cancelDamage)
-						KinkyDungeonDealDamage({damage: latexData.dmg, type: latexData.type});
+						KinkyDungeonDealDamage({damage: latexData.dmg*KDGetEnvironmentalDmg(), type: latexData.type});
 				} else if (KDCanBind(entity)) {
 					let latexData = {
 						cancelDamage: entity.boundLevel > entity.Enemy.maxhp + KDLatexBind,
 						enemy: entity,
 						dmg: 0,
-						bind: KDLatexBind,
+						bind: KDLatexBind*KDGetEnvironmentalDmg(),
 						type: "glue",
 					};
 					KinkyDungeonSendEvent("tickLatex", latexData);
@@ -288,7 +294,7 @@ let KDEffectTileFunctions = {
 						KinkyDungeonDamageEnemy(entity, {
 							type: "glue",
 							damage: 0,
-							bind: KDLatexBind,
+							bind: KDLatexBind*KDGetEnvironmentalDmg(),
 							flags: ["DoT"]
 						}, false, true, undefined, undefined, undefined, "Rage");
 						if (entity.boundLevel >= entity.Enemy.maxhp) {
@@ -323,7 +329,7 @@ let KDEffectTileFunctions = {
 		if (entity.player) {
 			KinkyDungeonDealDamage({
 				type: "fire",
-				damage: 1,
+				damage: 1*KDGetEnvironmentalDmg(),
 				time: 0,
 				bind: 0,
 				flags: ["BurningDamage"]
@@ -332,7 +338,7 @@ let KDEffectTileFunctions = {
 		} else {
 			KinkyDungeonDamageEnemy(entity, {
 				type: "fire",
-				damage: 1,
+				damage: 1*KDGetEnvironmentalDmg(),
 				time: 0,
 				bind: 0,
 				flags: ["BurningDamage"]

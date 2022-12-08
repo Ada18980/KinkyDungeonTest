@@ -103,6 +103,10 @@ let KDPerkUpdateStats = {
 		KDExtraEnemyTags.latexRestraints = 0;
 		KDExtraEnemyTags.latexRestraintsHeavy = 4;
 	},
+	"CommonLeather": () => {
+		KDExtraEnemyTags.leatherRestraints = 0;
+		KDExtraEnemyTags.leatherRestraintsHeavy = 4;
+	},
 	"CommonMaid": () => {
 		KDExtraEnemyTags.maidRestraints = 0;
 		KDExtraEnemyTags.maidVibeRestraintsLimited = 0;
@@ -168,6 +172,7 @@ let KinkyDungeonStatsPresets = {
 	"NoWayOut": {category: "Restraints", id: 52, cost: -1},
 	"TightRestraints": {category: "Restraints", id: 54, cost: -1},
 	"MagicHands": {category: "Restraints", id: "MagicHands", cost: -1},
+	"CursedLocks": {category: "Restraints", id: "CursedLocks", cost: -1},
 	"Unchained": {category: "Kinky", id: 26, cost: 2, block: ["Damsel"]},
 	"Damsel": {category: "Kinky", id: 27, cost: -1, block: ["Unchained"]},
 	"Artist": {category: "Kinky", id: 28, cost: 2, block: ["Bunny"]},
@@ -186,7 +191,9 @@ let KinkyDungeonStatsPresets = {
 	"Clumsy": {category: "Combat", id: 21, cost: -1},
 	"HeelWalker": {category: "Combat", id: 53, cost: 1},
 	"BondageLover": {category: "Kinky", id: 15, cost: -1},
+	"Undeniable": {category: "Kinky", id: "Undeniable", cost: -1},
 	"BoundPower": {category: "Combat", id: 40, cost: 3},
+	"SavourTheTaste": {category: "Combat", id: "SavourTheTaste", cost: -1},
 	"KillSquad": {category: "Enemies", id: 41, cost: -3, block: ["Conspicuous"]},
 	"Stealthy": {category: "Enemies", id: 38, cost: 0},
 	"Conspicuous": {category: "Enemies", id: 39, cost: -1, block: ["KillSquad"]},
@@ -232,6 +239,7 @@ let KinkyDungeonStatsPresets = {
 	"Panic": {category: "Map", id: "Panic", cost: -1},
 
 	"Rusted": {category: "Map", id: "Rusted", cost: 1},
+	"Forgetful": {category: "Map", id: "Forgetful", cost: -1},
 	"Unmasked": {category: "Toggles", id: "Unmasked", cost: 0},
 	"NoNurse": {category: "Toggles", id: "NoNurse", cost: 0},
 	"NoBrats": {category: "Toggles", id: "NoBrats", cost: 0, debuff: true, block: ["OnlyBrats"]},
@@ -269,6 +277,7 @@ let KinkyDungeonStatsPresets = {
 
 	"CommonMaid": {category: "Enemies", id: "CommonMaid", cost: -1, costGroup: "common"},
 	"CommonLatex": {category: "Enemies", id: "CommonLatex", cost: -1, costGroup: "common"},
+	"CommonLeather": {category: "Enemies", id: "CommonLeather", cost: -1, costGroup: "common"},
 	"CommonExp": {category: "Enemies", id: "CommonExp", cost: -1, costGroup: "common"},
 	"CommonDress": {category: "Enemies", id: "CommonDress", cost: -1, costGroup: "common"},
 	"CommonWolf": {category: "Enemies", id: "CommonWolf", cost: -1, costGroup: "common"},
@@ -501,6 +510,9 @@ let KDPerkStart = {
 				KDSetFactionRelation(key, key2, 0.5);
 			}
 		}
+	},
+	Cursed: () => {
+		KinkyDungeonChangeFactionRep("Angel", -100);
 	},
 };
 

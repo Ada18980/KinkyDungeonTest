@@ -669,7 +669,7 @@ function KinkyDungeonAddGold(value) {
 
 function KDSpawnLootTrap(x, y, trap, mult, duration) {
 	let spawned = 0;
-	let maxspawn = 1 + Math.round(Math.min(2 + KDRandom() * 2, KinkyDungeonDifficulty/25) + Math.min(2 + KDRandom() * 2, 0.5*MiniGameKinkyDungeonLevel/KDLevelsPerCheckpoint));
+	/*let maxspawn = 1 + Math.round(Math.min(2 + KDRandom() * 2, KinkyDungeonDifficulty/25) + Math.min(2 + KDRandom() * 2, 0.5*MiniGameKinkyDungeonLevel/KDLevelsPerCheckpoint));
 	if (mult) maxspawn *= mult;
 	let requireTags = trap ? [trap] : undefined;
 
@@ -683,13 +683,46 @@ function KDSpawnLootTrap(x, y, trap, mult, duration) {
 				KinkyDungeonMapIndex[MiniGameKinkyDungeonCheckpoint],
 				'0', requireTags, true);
 			if (Enemy) {
-				let pass = KinkyDungeonSummonEnemy(KinkyDungeonPlayerEntity.x, KinkyDungeonPlayerEntity.y, Enemy.name, 1, 7, true, (duration || Enemy.tags.construct) ? (duration || 40) : undefined, undefined, false, "Ambush", true, 1.5, true, undefined, true, true);
+				let pass = false; //KinkyDungeonSummonEnemy(KinkyDungeonPlayerEntity.x, KinkyDungeonPlayerEntity.y, Enemy.name, 1, 7, true, (duration || Enemy.tags.construct) ? (duration || 40) : undefined, undefined, false, "Ambush", true, 1.5, true, undefined, true, true);
 				if (pass) {
-					if (Enemy.tags.minor) spawned += 0.4;
+					if (Enemy.tags.minor) spawned += 0.5;
+					else if (Enemy.tags.elite) spawned += 1.5;
+					else if (Enemy.tags.miniboss) spawned += 2;
+					else if (Enemy.tags.boss) spawned += 4;
 					else spawned += 1;
+					if (Enemy.summonTags) {
+						for (let t of Enemy.summonTags) {
+							if (!tags.includes(t)) tags.push(t);
+						}
+					}
+					if (Enemy.summonTagsMulti) {
+						for (let t of Enemy.summonTagsMulti) {
+							tags.push(t);
+						}
+					}
 				}
 			}
 		}
+	}*/
+
+	for (let tile of KDNearbyTiles(x, y, 2.5)) {
+		if (tile.tile.lootTrapEnemy) {
+			let etiles = Object.values(KDGetEffectTiles(tile.x, tile.y)).filter((etile) => {
+				return etile.tags && etile.tags.includes("rune");
+			});
+			if (etiles?.length > 0) {
+				let Enemy = KinkyDungeonGetEnemyByName(tile.tile.lootTrapEnemy);
+				if (Enemy) {
+					if (KinkyDungeonSummonEnemy(tile.x, tile.y, Enemy.name, 1, 0.5, true, (duration || Enemy.tags.construct) ? (duration || 40) : undefined, undefined, false, "Ambush", true, undefined, true, undefined, true, false))
+						spawned += 1;
+					for (let et of etiles) {
+						et.duration = 0;
+					}
+					delete tile.tile.lootTrapEnemy;
+				}
+			}
+		}
+
 	}
 	if (spawned > 0) {
 		if (KinkyDungeonSound) AudioPlayInstantSoundKD(KinkyDungeonRootDirectory + "/Audio/MagicSlash.ogg");
@@ -712,11 +745,11 @@ function KDGenChestTrap(guaranteed, x, y, chestType, lock, noTrap) {
 let KDTrapChestType = {
 	"default" : (guaranteed, x, y, chestType, lock, noTrap) => {
 		if (KDRandom() < 0.33)
-			return {trap: "metalTrap", mult: 1.25};
+			return {trap: "metalTrap", mult: 1};
 		else if (KDRandom() < 0.34)
-			return {trap: "leatherTrap", mult: 1.25};
+			return {trap: "leatherTrap", mult: 1.2};
 		else
-			return {trap: "ropeTrap", mult: 1.5};
+			return {trap: "ropeTrap", mult: 1.4};
 	},
 	"shadow" : (guaranteed, x, y, chestType, lock, noTrap) => {
 		return {trap: "shadowTrap", mult: 2.5, duration: 300};

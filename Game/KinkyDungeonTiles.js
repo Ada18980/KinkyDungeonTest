@@ -91,7 +91,7 @@ function KinkyDungeonHandleMoveToTile(toTile) {
 		} else if (!(KDGameData.SleepTurns > 0)) {
 			if (KinkyDungeonLastAction == "Move" || KinkyDungeonLastAction == "Wait")
 				KinkyDungeonConfirmStairs = true;
-			KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonConfirmStairs"), "white", 1);
+			KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonConfirmStairs"), "white", 1, true);
 		}
 	}
 }
@@ -362,6 +362,10 @@ function KDDrawEffectTiles(canvasOffsetX, canvasOffsetY, CamX, CamY) {
 		for (let tile of Object.values(tileLocation)) {
 			let sprite = (tile.pauseDuration > 0 && tile.pauseSprite) ? tile.pauseSprite : (tile.skin ? tile.skin : tile.name);
 			if (tile.x >= CamX && tile.y >= CamY && tile.x < CamX + KinkyDungeonGridWidthDisplay && tile.y < CamY + KinkyDungeonGridHeightDisplay && KinkyDungeonVisionGet(tile.x, tile.y) > 0) {
+				if (tile.tags?.includes("hiddenmagic")) {
+					let rad = KinkyDungeonGetBuffedStat(KinkyDungeonPlayerBuffs, "MagicalSight");
+					if (rad <= 0 || KDistEuclidean(tile.x - KinkyDungeonPlayerEntity.x, tile.y - KinkyDungeonPlayerEntity.y) > rad) continue;
+				}
 				let tileid = tile.x + "," + tile.y + "_" + sprite;
 				KDDraw(kdgameboard, kdpixisprites, tileid, KinkyDungeonRootDirectory + "EffectTiles/" + sprite + ".png",
 					(tile.x + (tile.xoffset ? tile.xoffset : 0) - CamX)*KinkyDungeonGridSizeDisplay, (tile.y - CamY + (tile.yoffset ? tile.yoffset : 0))*KinkyDungeonGridSizeDisplay,

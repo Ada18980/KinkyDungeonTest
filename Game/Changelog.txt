@@ -1171,7 +1171,23 @@ Features
 - Distracted enemies will have a miscast chance
 - Spellcaster-type enemies now know command word and will unlock each other. Lockdown, on the other hand, is now infinite.
 - You can ask neutrals and allies to give you a key or cast command word on you
-- Saving is now save-state based.
+- Saving is now save-state based and there are autosaves in roguelike mode
+
+3.83 (Nov 2022)
+- New perks: Cursed Locks, Undeniable, Forgetful
+- Added music by kocaeli
+- New enemy: Trainer's Apprentice, Nevermere Drone, Wolfguard, Wolf Instructor, Shield Drone, Swarm of Tape Drones, Nevermere Operative, The Executive
+- Changes to the log to fit more text
+- Captures yield less rep when you already have high rep
+- Cutting restraints now makes debris
+- Can now paste copied perks
+- Struggling now takes more time but requires less click spam
+- Added some upgrades to a dedicated area in the spell list
+- Analyze now reveals magic runes that spawn traps
+- Knowledge magic tree now unlocks advanced tooltips
+- Not all red locks are created equal...
+- Buffed enemy sense
+- Enemies now have limited restraints
 
 
 TODO ValidationFindBlockCycles to prevent bugs

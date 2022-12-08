@@ -63,10 +63,10 @@ const KinkyDungeonMapParams = {
 			{Name: "SpawnEnemies", Enemy: "Bandit", strict: true, Level: 0, Power: 1, Weight: 10},
 		],
 
-		"min_width" : 6,
-		"max_width" : 9,
+		"min_width" : 5,
+		"max_width" : 7,
 		"min_height" : 5,
-		"max_height" : 8,
+		"max_height" : 6,
 		"defeat_outfit": "Prisoner",
 		"shrines": [
 			//{Type: "Charms", Weight: 5},
@@ -150,10 +150,10 @@ const KinkyDungeonMapParams = {
 			{Name: "SpawnEnemies", Enemy: "Bandit", strict: true, Level: 0, Power: 2, Weight: 10},
 		],
 
-		"min_width" : 6,
-		"max_width" : 9,
+		"min_width" : 5,
+		"max_width" : 7,
 		"min_height" : 5,
-		"max_height" : 8,
+		"max_height" : 6,
 
 		enemyTags: ["skeleton"],
 		"defeat_outfit": "Dungeon",
@@ -228,10 +228,10 @@ const KinkyDungeonMapParams = {
 			{Name: "SpawnEnemies", Enemy: "Bandit", strict: true, Level: 0, Power: 3, Weight: 10},
 		],
 
-		"min_width" : 6,
-		"max_width" : 9,
+		"min_width" : 5,
+		"max_width" : 6,
 		"min_height" : 5,
-		"max_height" : 8,
+		"max_height" : 5,
 
 		enemyTags: ["plant", "jungle"],
 		"defeat_outfit": "LatexPrisoner",
@@ -288,6 +288,9 @@ const KinkyDungeonMapParams = {
 			"cavern": 0,
 			"temple": 3,
 		},
+		globalTags: {
+			"temple": true,
+		},
 
 		shadowColor: 0x000703,
 
@@ -317,10 +320,10 @@ const KinkyDungeonMapParams = {
 			{Name: "SpawnEnemies", Enemy: "HeavySkeleton", strict: true, Level: 0, Power: 1, Weight: 10},
 		],
 
-		"min_width" : 6,
-		"max_width" : 9,
+		"min_width" : 5,
+		"max_width" : 7,
 		"min_height" : 5,
-		"max_height" : 8,
+		"max_height" : 5,
 
 		enemyTags: ["skeleton", "temple", "ghost"],
 		"defeat_outfit": "LatexPrisoner",
@@ -410,10 +413,10 @@ const KinkyDungeonMapParams = {
 			{Name: "SpawnEnemies", Enemy: "Bandit", strict: true, Level: 0, Power: 3, Weight: 10},
 		],
 
-		"min_width" : 6,
-		"max_width" : 9,
+		"min_width" : 5,
+		"max_width" : 6,
 		"min_height" : 5,
-		"max_height" : 8,
+		"max_height" : 7,
 
 		enemyTags: ["mummy", "ghost"],
 		"defeat_outfit": "Bast",
@@ -450,7 +453,7 @@ const KinkyDungeonMapParams = {
 		"trapchance" : 0.3,
 		"grateChance" : 0.7,
 		"rubblechance" : 0.3,
-		"brickchance" : 0.03,
+		"brickchance" : 0.01,
 		"cacheInterval" : 1,
 		// Side routes have more high-value loot
 		"forbiddenChance" : 1.0,
@@ -580,9 +583,9 @@ const KinkyDungeonMapParams = {
 		],
 
 		"min_width" : 4,
-		"max_width" : 8,
-		"min_height" : 4,
-		"max_height" : 8,
+		"max_width" : 5,
+		"min_height" : 5,
+		"max_height" : 7,
 
 		enemyTags: ["mushroom", "slimeBonus", "crystalline"],
 		"defeat_outfit": "Prisoner",
