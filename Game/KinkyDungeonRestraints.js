@@ -227,6 +227,8 @@ let KDLeashPullKneelTime = 8;
  * @returns {boolean}
  */
 function KinkyDungeonUpdateTether(Msg, Entity, xTo, yTo) {
+	if (Entity.player && KinkyDungeonFlags.get("pulled")) return false;
+	else if (KDEnemyHasFlag(Entity, "pulled")) return false;
 	let exceeded = false;
 	for (let inv of KinkyDungeonAllRestraint()) {
 		if (KDRestraint(inv).tether && (inv.tx && inv.ty || inv.tetherToLeasher || inv.tetherToGuard || inv.tetherEntity)) {
@@ -301,21 +303,31 @@ function KinkyDungeonUpdateTether(Msg, Entity, xTo, yTo) {
 								if (slot2) {
 									KDMoveEntity(enemy, slot2.x, slot2.y, false);
 								} else {
-									KDMoveEntity(enemy, Entity.x, Entity.y, false);
+									let pointSwap = KinkyDungeonGetNearbyPoint(slot.x, slot.y, true, undefined, true, true);
+									if (pointSwap)
+										KDMoveEntity(enemy, pointSwap.x, pointSwap.y, false);
+									else
+										KDMoveEntity(enemy, Entity.x, Entity.y, false);
 								}
 							}
 
 							KDMoveEntity(Entity, slot.x, slot.y, false);
-							if (KinkyDungeonCanStand()) {
-								KDGameData.KneelTurns = Math.max(KDGameData.KneelTurns, KDLeashPullKneelTime + KinkyDungeonSlowMoveTurns);
-								KinkyDungeonChangeStamina(-KDLeashPullCost, false, true);
+							if (Entity.player) KinkyDungeonSetFlag("pulled", 1);
+							else KinkyDungeonSetEnemyFlag(Entity, "pulled");
+							if (Entity.player) {
+								if (KinkyDungeonCanStand()) {
+									KDGameData.KneelTurns = Math.max(KDGameData.KneelTurns, KDLeashPullKneelTime + KinkyDungeonSlowMoveTurns);
+									KinkyDungeonChangeStamina(-KDLeashPullCost, false, true);
+								}
+								KinkyDungeonInterruptSleep();
+								KinkyDungeonSendEvent("leashTug", {Entity: Entity, slot: slot, item: inv});
+								if (KinkyDungeonLeashingEnemy()) {
+									KinkyDungeonSetEnemyFlag(KinkyDungeonLeashingEnemy(), "harshpull", 5);
+								}
+								if (Msg) KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonTetherPull").replace("TETHER", TextGet("Restraint" + inv.name)), "#ff0000", 2, true);
+
 							}
-							KinkyDungeonInterruptSleep();
-							KinkyDungeonSendEvent("leashTug", {Entity: Entity, slot: slot, item: inv});
-							if (KinkyDungeonLeashingEnemy()) {
-								KinkyDungeonSetEnemyFlag(KinkyDungeonLeashingEnemy(), "harshpull", 5);
-							}
-							if (Msg) KinkyDungeonSendActionMessage(10, TextGet("KinkyDungeonTetherPull").replace("TETHER", TextGet("Restraint" + inv.name)), "#ff0000", 2, true);
+
 						}
 					}
 				}
@@ -872,26 +884,37 @@ function KinkyDungeonIsArmsBound(ApplyGhost, Other) {
  *
  * @param {boolean} ApplyGhost
  * @param {string} Group
+ * @param {item} [excludeItem]
  * @returns {number}
  */
-function KinkyDungeonStrictness(ApplyGhost, Group) {
+function KinkyDungeonStrictness(ApplyGhost, Group, excludeItem) {
 	if (ApplyGhost && (KinkyDungeonHasGhostHelp() || KinkyDungeonHasAllyHelp())) return 0;
 	let strictness = 0;
 	for (let inv of KinkyDungeonAllRestraint()) {
-		if (KDRestraint(inv).Group != Group && ((KDRestraint(inv).strictness && KDRestraint(inv).strictness > strictness) || inv.dynamicLink))  {
-			let strictGroups = KinkyDungeonStrictnessTable.get(KDRestraint(inv).Group);
+		if (inv != excludeItem && ((KDRestraint(inv).strictness && KDRestraint(inv).strictness > strictness)))  {
+			let strictGroups = KDRestraint(inv).strictnessZones || KinkyDungeonStrictnessTable.get(KDRestraint(inv).Group);
 			if (strictGroups) {
 				for (let s of strictGroups) {
 					if (s == Group) {
 						if (KDRestraint(inv).strictness > strictness)
 							strictness = KDRestraint(inv).strictness;
-						if (inv.dynamicLink) {
-							for (let invLink of KDDynamicLinkList(inv)) {
+						break;
+					}
+				}
+			}
+		}
+		if (inv.dynamicLink) {
+			for (let invLink of KDDynamicLinkList(inv)) {
+				if (invLink != excludeItem && KDRestraint(invLink).strictness > strictness) {
+					let strictGroups = KDRestraint(invLink).strictnessZones || KinkyDungeonStrictnessTable.get(KDRestraint(invLink).Group);
+					if (strictGroups) {
+						for (let s of strictGroups) {
+							if (s == Group) {
 								if (KDRestraint(invLink).strictness > strictness)
 									strictness = KDRestraint(invLink).strictness;
+								break;
 							}
 						}
-						break;
 					}
 				}
 			}
@@ -903,13 +926,14 @@ function KinkyDungeonStrictness(ApplyGhost, Group) {
 /**
  * Gets the list of restraint nammes affecting the Group
  * @param {string} Group
+ * @param {item} excludeItem
  * @returns {string[]}
  */
-function KinkyDungeonGetStrictnessItems(Group) {
+function KinkyDungeonGetStrictnessItems(Group, excludeItem) {
 	let list = [];
 	for (let inv of KinkyDungeonAllRestraint()) {
-		if (KDRestraint(inv).Group != Group && (KDRestraint(inv).strictness || inv.dynamicLink))  {
-			let strictGroups = KinkyDungeonStrictnessTable.get(KDRestraint(inv).Group);
+		if (inv != excludeItem && KDRestraint(inv).strictness)  {
+			let strictGroups = KDRestraint(inv).strictnessZones || KinkyDungeonStrictnessTable.get(KDRestraint(inv).Group);
 			if (strictGroups) {
 				for (let s of strictGroups) {
 					if (s == Group) {
@@ -917,15 +941,15 @@ function KinkyDungeonGetStrictnessItems(Group) {
 						if (KDRestraint(inv).strictness)
 							list.push(KDRestraint(inv).name);
 						// Add the items underneath it!!
-						if (inv.dynamicLink) {
-							for (let invLink of KDDynamicLinkList(inv)) {
-								if (KDRestraint(invLink).strictness)
-									list.push(KDRestraint(invLink).name);
-							}
-						}
 						break;
 					}
 				}
+			}
+		}
+		if (inv.dynamicLink) {
+			for (let invLink of KDDynamicLinkList(inv)) {
+				if (invLink != excludeItem && KDRestraint(invLink).strictness)
+					list.push(KDRestraint(invLink).name);
 			}
 		}
 	}
@@ -1255,7 +1279,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 		helpChance: helpChance,
 		cutSpeed: 0.25,
 		affinity: affinity,
-		strict: KinkyDungeonStrictness(true, struggleGroup),
+		strict: KinkyDungeonStrictness(true, struggleGroup, restraint),
 		hasAffinity: KinkyDungeonGetAffinity(true, affinity, struggleGroup),
 		restraintEscapeChance: KDRestraint(restraint).escapeChance[StruggleType],
 		cost: KinkyDungeonStatStaminaCostStruggle,
@@ -1679,6 +1703,8 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 
 			// Pass block
 			let progress = restraint.cutProgress ? restraint.cutProgress : 0;
+			let struggleTime = KinkyDungeonStatsChoice.get("FranticStruggle") ? 1 : KDStruggleTime;
+			if (KinkyDungeonStatsChoice.get("FranticStruggle")) data.cost *= 1.5;
 
 			if (((StruggleType == "Cut" && progress >= 1 - data.escapeChance)
 					|| (StruggleType == "Pick" && restraint.pickProgress >= 1 - data.escapeChance)
@@ -1721,7 +1747,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 							mult *= 0.7 + 0.3 * (KinkyDungeonStatWill / KinkyDungeonStatWillMax);
 							KDAddDelayedStruggle(
 								escapeSpeed * speed * (0.3 + 0.2 * KDRandom() + 0.6 * Math.max(0, (KinkyDungeonStatStamina)/KinkyDungeonStatStaminaMax)),
-								KDStruggleTime, StruggleType, struggleGroup, index, data,
+								struggleTime, StruggleType, struggleGroup, index, data,
 								restraint.cutProgress, maxLimit
 							);
 							if (speed > 0) {
@@ -1769,7 +1795,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 						mult *= 0.5 + 0.5 * (KinkyDungeonStatWill / KinkyDungeonStatWillMax);
 						KDAddDelayedStruggle(
 							escapeSpeed * mult * (data.escapeChance > 0 ? (KDMinPickRate * (data.escapeChance > 0.5 ? 2 : 1)) : 0) * (0.8 + 0.4 * KDRandom() - 0.4 * Math.max(0, (KinkyDungeonStatDistraction)/KinkyDungeonStatDistractionMax)),
-							KDStruggleTime, StruggleType, struggleGroup, index, data,
+							struggleTime, StruggleType, struggleGroup, index, data,
 							restraint.pickProgress, maxLimit
 						);
 					}
@@ -1794,7 +1820,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 						mult *= 0.7 + 0.3 * (KinkyDungeonStatWill / KinkyDungeonStatWillMax);
 						KDAddDelayedStruggle(
 							escapeSpeed * mult * Math.max(data.escapeChance > 0 ? KDMinEscapeRate : 0, data.escapeChance) * (0.8 + 0.4 * KDRandom() - 0.4 * Math.max(0, (KinkyDungeonStatDistraction)/KinkyDungeonStatDistractionMax)),
-							KDStruggleTime, StruggleType, struggleGroup, index, data,
+							struggleTime, StruggleType, struggleGroup, index, data,
 							restraint.unlockProgress, maxLimit
 						);
 					}
@@ -1808,7 +1834,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 					mult *= 0.7 + 0.3 * (KinkyDungeonStatWill / KinkyDungeonStatWillMax);
 					KDAddDelayedStruggle(
 						escapeSpeed * mult * Math.max(data.escapeChance > 0 ? KDMinEscapeRate : 0, data.escapeChance) * (0.5 + 0.4 * KDRandom() + 0.3 * Math.max(0, (KinkyDungeonStatStamina)/KinkyDungeonStatStaminaMax)),
-						KDStruggleTime, StruggleType, struggleGroup, index, data,
+						struggleTime, StruggleType, struggleGroup, index, data,
 						restraint.struggleProgress, maxLimit
 					);
 				} else if (StruggleType == "Struggle") {
@@ -1821,7 +1847,7 @@ function KinkyDungeonStruggle(struggleGroup, StruggleType, index) {
 					mult *= 0.7 + 0.3 * (KinkyDungeonStatWill / KinkyDungeonStatWillMax);
 					KDAddDelayedStruggle(
 						escapeSpeed * mult * Math.max(data.escapeChance > 0 ? KDMinEscapeRate : 0, data.escapeChance) * (0.5 + 0.4 * KDRandom() + 0.3 * Math.max(0, (KinkyDungeonStatStamina)/KinkyDungeonStatStaminaMax)),
-						KDStruggleTime, StruggleType, struggleGroup, index, data,
+						struggleTime, StruggleType, struggleGroup, index, data,
 						restraint.struggleProgress, maxLimit
 					);
 				}
@@ -2021,7 +2047,7 @@ function KinkyDungeonGetRestraint(enemy, Level, Index, Bypass, Lock, RequireWill
 	for (let r of cache) {
 		let restraint = r.r;
 		if (filter) {
-			if (filter.maxPower && r.r.power > filter.maxPower) continue;
+			if (filter.maxPower && r.r.power > filter.maxPower && (!filter.looseLimit || !r.r.unlimited)) continue;
 			if (filter.minPower && r.r.power < filter.minPower && (!filter.looseLimit || !r.r.limited) && !r.r.unlimited) continue;
 			if (filter.onlyUnlimited && r.r.limited) continue;
 			if (filter.noUnlimited && r.r.unlimited) continue;

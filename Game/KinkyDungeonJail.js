@@ -479,7 +479,7 @@ function KinkyDungeonHandleJailSpawns(delta) {
 		if (KDHelpless(KinkyDungeonJailGuard())) {
 			KDGameData.KinkyDungeonJailGuard = 0;
 		}
-		if (KDistEuclidean(KinkyDungeonJailGuard().x - KinkyDungeonPlayerEntity.x, KinkyDungeonJailGuard().y - KinkyDungeonPlayerEntity.y) > 8 && KDGameData.KinkyDungeonGuardTimer < 4) {
+		if (KinkyDungeonJailGuard() && KDistChebyshev(KinkyDungeonJailGuard().x - KinkyDungeonPlayerEntity.x, KinkyDungeonJailGuard().y - KinkyDungeonPlayerEntity.y) > 10 && KDGameData.KinkyDungeonGuardTimer < 4) {
 			KDGameData.KinkyDungeonJailGuard = 0;
 		}
 	}
@@ -985,9 +985,6 @@ function KDKickEnemies(nearestJail) {
 			KDResetIntent(e, {});
 			enemies.push(e);
 		}
-	}
-	for (let e of KinkyDungeonEntities) {
-		KDClearItems(e);
 	}
 	KinkyDungeonEntities = enemies;
 	KDUpdateEnemyCache = true;
